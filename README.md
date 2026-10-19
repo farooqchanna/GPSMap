@@ -13,13 +13,13 @@ No `local.properties` API key entry is needed. Android Studio normally creates `
 
 ## Features
 - Take a photo with the device's camera or select one from the gallery.
-- View an OpenStreetMap map, tap to choose a location, or search an address with Android's Geocoder.
+- View an OpenStreetMap map, tap to choose a location, or search an address (OpenStreetMap Nominatim).
 - Use the device's current GPS location (grant location permission when prompted).
 - Stamp location/address, coordinates, plus code, and selected date/time onto the photo.
 - Save the stamped JPEG to `Pictures/GPSMapCamera`.
 
 ## Notes
 - Google Maps SDK itself cannot be used without a Google Maps API key. This project avoids that requirement by using OpenStreetMap instead.
-- Map tiles and address search need an internet connection. Address lookup uses Android's Geocoder service, which can vary by device. Coordinates and plus codes are generated locally.
+- Map tiles and address search need an internet connection. Address search and reverse lookup use OpenStreetMap Nominatim, with Photon and Android's Geocoder as fallbacks, so they work on devices without Google services. Coordinates and plus codes are generated locally.
 - OpenStreetMap data attribution is included. Respect the OpenStreetMap tile usage policy; for high-volume production use, configure an appropriate tile provider.
 - This source project has not been built in this environment because Android SDK/Gradle tooling is not installed here. Please run a build in Android Studio or CI and share any new error text if one appears.

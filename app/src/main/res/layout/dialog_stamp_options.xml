@@ -5,7 +5,7 @@
         <Button android:id="@+id/searchPlaceButton" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Search a place"/>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Tap the map or drag the pin to choose a location" android:textSize="12sp"
+            android:text="Search a place, or tap the map to choose a location" android:textSize="12sp"
             android:layout_marginTop="4dp"/>
         <org.osmdroid.views.MapView android:id="@+id/locationMap"
             android:layout_width="match_parent" android:layout_height="220dp"

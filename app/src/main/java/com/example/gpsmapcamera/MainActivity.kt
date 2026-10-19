@@ -1,6 +1,7 @@
 package com.example.gpsmapcamera
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.ContentValues
@@ -21,6 +22,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.Job
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.URLEncoder
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -53,6 +60,9 @@ class MainActivity : AppCompatActivity() {
     private var mapMarker: Marker? = null
     private var mapView: MapView? = null
     private var optionsDialog: AlertDialog? = null
+    private var geocodeJob: Job? = null
+    private var mapAttribution = ""
+    private data class PlaceHit(val label: String, val lat: Double, val lon: Double)
     private var stampTitle = "Pahore, Sindh, Pakistan 🇵🇰"
     private var stampAddress = ""
     private var stampCoords = ""
@@ -68,6 +78,9 @@ class MainActivity : AppCompatActivity() {
     }
     private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) photoUri?.let { loadPhoto(it); showOptions() }
+    }
+    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveStampedPhoto() else toast("Storage permission is required to save the photo.")
     }
     private val pickPhoto = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { photoUri = it; loadPhoto(it); showOptions() }
@@ -127,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         mapView = mapWidget
         mapWidget.setTileSource(TileSourceFactory.MAPNIK)
         mapWidget.setMultiTouchControls(true)
+        mapWidget.setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
         mapWidget.controller.setZoom(16.0)
         mapWidget.controller.setCenter(GeoPoint(chosenLat, chosenLon))
         addMapMarker(mapWidget, chosenLat, chosenLon)
@@ -189,31 +203,29 @@ class MainActivity : AppCompatActivity() {
         refreshDate()
         locationSummary.text = "$currentAddress\nLat $chosenLat, Long $chosenLon"
         dialogView.findViewById<Button>(R.id.searchPlaceButton).setOnClickListener {
-            val input = EditText(this).apply { hint = "Place or address" }
+            val input = EditText(this).apply { hint = "Place or address"; setSingleLine() }
             AlertDialog.Builder(this).setTitle("Search address").setView(input)
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Search") { _, _ ->
                     val query = input.text.toString().trim()
                     if (query.isNotBlank()) lifecycleScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            try { Geocoder(this@MainActivity, Locale.getDefault()).getFromLocationName(query, 1)?.firstOrNull() }
-                            catch (_: Exception) { null }
+                        toast("Searching…")
+                        val hits = withContext(Dispatchers.IO) { searchPlaces(query) }
+                        when {
+                            hits == null -> toast("Search failed. Check your internet connection and try again.")
+                            hits.isEmpty() -> toast("Address not found. Try a more specific search.")
+                            hits.size == 1 -> applySearchHit(mapWidget, hits[0])
+                            else -> AlertDialog.Builder(this@MainActivity).setTitle("Choose a result")
+                                .setItems(hits.map { it.label }.toTypedArray()) { _, i -> applySearchHit(mapWidget, hits[i]) }
+                                .setNegativeButton("Cancel", null).show()
                         }
-                        if (result != null) {
-                            setLocation(result.latitude, result.longitude)
-                            mapWidget.controller.setCenter(GeoPoint(result.latitude, result.longitude))
-                            addMapMarker(mapWidget, result.latitude, result.longitude)
-                        } else toast("Address not found. Try a more specific search.")
                     }
                 }.show()
         }
         dialogView.findViewById<Button>(R.id.useGpsButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 900)
-            } else {
-                LocationServices.getFusedLocationProviderClient(this).lastLocation
-                    .addOnSuccessListener { loc -> if (loc != null) { setLocation(loc.latitude, loc.longitude); locationSummary.text = "$currentAddress\nLat $chosenLat, Long $chosenLon" } else toast("Current location is not available.") }
-            }
+            } else fetchGpsLocation()
         }
         dialogView.findViewById<CheckBox>(R.id.useCurrentTime).setOnCheckedChangeListener { _, checked ->
             if (checked) { chosenDate = Calendar.getInstance(); refreshDate() }
@@ -238,7 +250,6 @@ class MainActivity : AppCompatActivity() {
             updateStampViews()
             optionsDialog?.dismiss()
             fetchMapSnapshot(chosenLat, chosenLon)
-            requestMapSnapshot()
         }
         optionsDialog?.show()
     }
@@ -254,6 +265,26 @@ class MainActivity : AppCompatActivity() {
         widget.invalidate()
     }
 
+    private fun applySearchHit(widget: MapView, hit: PlaceHit) {
+        setLocation(hit.lat, hit.lon)
+        widget.controller.setZoom(16.0)
+        widget.controller.setCenter(GeoPoint(hit.lat, hit.lon))
+        addMapMarker(widget, hit.lat, hit.lon)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun fetchGpsLocation() {
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, CancellationTokenSource().token)
+            .addOnSuccessListener { loc ->
+                if (loc != null) setLocation(loc.latitude, loc.longitude)
+                else client.lastLocation.addOnSuccessListener { last ->
+                    if (last != null) setLocation(last.latitude, last.longitude) else toast("Current location is not available. Turn on GPS and try again.")
+                }
+            }
+            .addOnFailureListener { toast("Could not get GPS location: ${it.message}") }
+    }
+
     private fun setLocation(lat: Double, lon: Double) {
         chosenLat = lat; chosenLon = lon
         mapView?.let {
@@ -261,7 +292,9 @@ class MainActivity : AppCompatActivity() {
             addMapMarker(it, lat, lon)
         }
         fetchMapSnapshot(lat, lon)
-        lifecycleScope.launch {
+        optionsDialog?.findViewById<TextView>(R.id.locationSummary)?.text = "Finding address…\nLat $lat, Long $lon"
+        geocodeJob?.cancel()
+        geocodeJob = lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) { reverseGeocode(lat, lon) }
             currentAddress = data.first
             addressLine = data.second
@@ -271,7 +304,75 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---------- Geocoding: OpenStreetMap Nominatim -> Photon -> Android Geocoder (fallbacks) ----------
+
+    private fun httpGet(urlString: String): String {
+        val conn = URL(urlString).openConnection() as HttpURLConnection
+        try {
+            conn.setRequestProperty("User-Agent", "GPSMapCamera/1.0 (Android; dev@gpsmapcamera.local)")
+            conn.setRequestProperty("Accept-Language", Locale.getDefault().toLanguageTag())
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            if (conn.responseCode != 200) throw java.io.IOException("HTTP ${conn.responseCode}")
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally { conn.disconnect() }
+    }
+
+    /** Returns null if every provider failed (network error), empty list if nothing was found. */
+    private fun searchPlaces(query: String): List<PlaceHit>? {
+        val q = URLEncoder.encode(query, "UTF-8")
+        var anySuccess = false
+        try {
+            val arr = JSONArray(httpGet("https://nominatim.openstreetmap.org/search?q=$q&format=jsonv2&limit=5"))
+            anySuccess = true
+            val hits = (0 until arr.length()).map {
+                val o = arr.getJSONObject(it)
+                PlaceHit(o.getString("display_name"), o.getString("lat").toDouble(), o.getString("lon").toDouble())
+            }
+            if (hits.isNotEmpty()) return hits
+        } catch (_: Exception) { }
+        try {
+            val features = JSONObject(httpGet("https://photon.komoot.io/api/?q=$q&limit=5")).getJSONArray("features")
+            anySuccess = true
+            val hits = (0 until features.length()).map {
+                val f = features.getJSONObject(it)
+                val c = f.getJSONObject("geometry").getJSONArray("coordinates")
+                val pr = f.getJSONObject("properties")
+                val label = listOf("name", "street", "city", "state", "country").mapNotNull { k -> pr.optString(k).ifBlank { null } }.distinct().joinToString(", ")
+                PlaceHit(label, c.getDouble(1), c.getDouble(0))
+            }
+            if (hits.isNotEmpty()) return hits
+        } catch (_: Exception) { }
+        try {
+            @Suppress("DEPRECATION")
+            val list = Geocoder(this, Locale.getDefault()).getFromLocationName(query, 5)
+            anySuccess = true
+            val hits = list.orEmpty().map { PlaceHit(it.getAddressLine(0) ?: query, it.latitude, it.longitude) }
+            if (hits.isNotEmpty()) return hits
+        } catch (_: Exception) { }
+        return if (anySuccess) emptyList() else null
+    }
+
     private fun reverseGeocode(lat: Double, lon: Double): Pair<String, String> {
+        try {
+            val json = JSONObject(httpGet("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=$lat&lon=$lon"))
+            val a = json.optJSONObject("address")
+            if (a != null) {
+                fun f(vararg keys: String) = keys.firstNotNullOfOrNull { k -> a.optString(k).ifBlank { null } } ?: ""
+                val city = f("city", "town", "village", "municipality", "city_district", "suburb", "county", "state_district")
+                val state = f("state", "region")
+                val country = f("country")
+                val street = f("road", "pedestrian", "neighbourhood", "suburb", "hamlet")
+                val title = listOf(city, state, country).filter { it.isNotBlank() }.distinct().joinToString(", ")
+                val line = listOf(street, city, state, country).filter { it.isNotBlank() }.distinct().joinToString(", ")
+                if (title.isNotBlank()) return Pair(title, line)
+            }
+            json.optString("display_name").ifBlank { null }?.let { return Pair(it, it) }
+        } catch (_: Exception) { }
+        return geocoderReverse(lat, lon)
+    }
+
+    private fun geocoderReverse(lat: Double, lon: Double): Pair<String, String> {
         return try {
             val geocoder = Geocoder(this, Locale.getDefault())
             val a: Address? = if (Build.VERSION.SDK_INT >= 33) {
@@ -370,6 +471,7 @@ class MainActivity : AppCompatActivity() {
             textSize = bodySize
         }
         root.findViewById<ImageView>(R.id.stampMapImage)?.setImageBitmap(mapSnapshot)
+        root.findViewById<TextView>(R.id.stampMapCredit)?.text = mapAttribution
         val mapCard = root.findViewById<View>(R.id.stampMapCard)
         mapCard?.layoutParams?.let {
             val sizePx = (stampMapSizeDp * resources.displayMetrics.density).toInt()
@@ -379,18 +481,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestMapSnapshot() {
-        val view = mapView ?: return
-        try {
-            val bitmap = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
-            view.draw(Canvas(bitmap))
-            mapSnapshot = bitmap
-            updateStampViews()
-        } catch (_: Exception) { /* The stamp still works without a map thumbnail. */ }
-    }
-
     private fun saveStampedPhoto() {
         val source = photoBitmap ?: return toast("Choose a photo first.")
+        if (Build.VERSION.SDK_INT < 29 && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE); return
+        }
         buildStampText()
         val output = source.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
@@ -580,7 +675,7 @@ class MainActivity : AppCompatActivity() {
             )
             close()
         }
-        paint.color = Color.rgb(234, 67, 53) // Google Maps Red
+        paint.color = Color.rgb(234, 67, 53) // Red
         paint.style = Paint.Style.FILL
         canvas.drawPath(pinPath, paint)
 
@@ -588,18 +683,15 @@ class MainActivity : AppCompatActivity() {
         paint.color = Color.WHITE
         canvas.drawCircle(pinCenterX, headCenterY, pinRadius * 0.42f, paint)
 
-        // Google watermark text at bottom-left of Map Box
-        paint.color = Color.WHITE
-        paint.textSize = mapSize * 0.13f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        paint.setShadowLayer(3f, 1f, 1f, Color.argb(180, 0, 0, 0))
-        canvas.drawText(
-            "Google",
-            mapRect.left + mapSize * 0.08f,
-            mapRect.bottom - mapSize * 0.07f,
-            paint
-        )
-        paint.clearShadowLayer()
+        // Map attribution at bottom-left of Map Box
+        if (mapAttribution.isNotBlank() && mapSnapshot != null) {
+            paint.color = Color.WHITE
+            paint.textSize = mapSize * 0.09f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            paint.setShadowLayer(3f, 1f, 1f, Color.argb(180, 0, 0, 0))
+            canvas.drawText(mapAttribution, mapRect.left + mapSize * 0.06f, mapRect.bottom - mapSize * 0.06f, paint)
+            paint.clearShadowLayer()
+        }
         canvas.restore()
 
         // Draw Text Lines in Box 2
@@ -631,7 +723,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchMapSnapshot(lat: Double, lon: Double) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val tile = downloadSatelliteMapTile(lat, lon) ?: generateFallbackMapBitmap(lat, lon)
+            val tile = downloadSatelliteMapTile(lat, lon) ?: generateFallbackMapBitmap(lat, lon).also { mapAttribution = "" }
             withContext(Dispatchers.Main) {
                 mapSnapshot = tile
                 updateStampViews()
@@ -649,11 +741,11 @@ class MainActivity : AppCompatActivity() {
         val tileY = yExact.toInt()
 
         val urls = listOf(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$tileY/$tileX.jpg",
-            "https://tile.openstreetmap.org/$zoom/$tileX/$tileY.png"
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$tileY/$tileX.jpg" to "© Esri",
+            "https://tile.openstreetmap.org/$zoom/$tileX/$tileY.png" to "© OpenStreetMap"
         )
 
-        for (urlString in urls) {
+        for ((urlString, credit) in urls) {
             try {
                 val url = URL(urlString)
                 val conn = url.openConnection() as HttpURLConnection
@@ -666,6 +758,7 @@ class MainActivity : AppCompatActivity() {
                     stream.close()
                     conn.disconnect()
                     if (original != null) {
+                        mapAttribution = credit
                         return original
                     }
                 }
@@ -718,7 +811,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 900 && grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
-            toast("Tap Use current GPS location again to fetch your location.")
+            fetchGpsLocation()
         }
     }
 
