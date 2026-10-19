@@ -338,48 +338,81 @@ class MainActivity : AppCompatActivity() {
         val density = resources.displayMetrics.density
         val scale = output.width / photoPreview.width.coerceAtLeast(1).toFloat()
         val overlayScale = scale.coerceAtLeast(1f)
-        val boxHeight = maxOf(160f * density, (stampMapSizeDp + 32f) * density) * overlayScale
-        val mapSize = stampMapSizeDp * density
-        val badgeHeight = 26f * density
-        val left = 0f
-        val top = (output.height - boxHeight - 8f * density * overlayScale).coerceAtLeast(0f)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        paint.color = Color.argb(136, 20, 20, 20)
-        canvas.drawRect(left, top + badgeHeight, output.width.toFloat(), output.height.toFloat() - 8f*density, paint)
-        paint.color = Color.argb(153, 26, 26, 26)
-        val badgeW = 140f*density*overlayScale
-        canvas.drawRect(output.width-badgeW, top, output.width.toFloat(), top+badgeHeight*overlayScale, paint)
-        paint.color = Color.WHITE
-        paint.textSize = 11f * resources.displayMetrics.scaledDensity * overlayScale
-        canvas.drawText("📷  GPS Map Camera", output.width-badgeW+8f*density*overlayScale, top+18f*density*overlayScale, paint)
-
-        val mapRect = RectF(0f, top+badgeHeight*overlayScale, mapSize*overlayScale, top+badgeHeight*overlayScale+mapSize*overlayScale)
-        if (mapSnapshot != null) canvas.drawBitmap(mapSnapshot!!, null, mapRect, paint)
-        else { paint.color = Color.DKGRAY; canvas.drawRect(mapRect, paint) }
-        // Center marker and directional cone are composited independently of the map SDK snapshot.
-        val cx = mapRect.centerX(); val cy = mapRect.centerY()
-        val cone = Path().apply { moveTo(cx, cy); lineTo(cx-mapRect.width()*.32f, cy+mapRect.height()*.30f); lineTo(cx-mapRect.width()*.12f, cy+mapRect.height()*.08f); close() }
-        paint.color = Color.argb(102, 33, 150, 243); canvas.drawPath(cone, paint)
-        paint.color = Color.RED; canvas.drawCircle(cx, cy, 6f*density*overlayScale, paint)
-        paint.color = Color.WHITE; paint.textSize = 16f*resources.displayMetrics.scaledDensity*overlayScale; paint.isFakeBoldText = true
-        canvas.drawText("© OpenStreetMap", 8f*density*overlayScale, mapRect.bottom-8f*density*overlayScale, paint)
-
-        val tx = mapRect.right + 12f*density*overlayScale
-        val maxWidth = output.width - tx - 12f*density*overlayScale
-        fun text(value: String, size: Float, y: Float, color: Int = Color.WHITE): Float {
-            paint.color = color; paint.textSize = size*resources.displayMetrics.scaledDensity*overlayScale; paint.isFakeBoldText = false
-            paint.setShadowLayer(2f*overlayScale, 0f, 0f, Color.argb(128,0,0,0))
-            val lines = wrapText(value, paint, maxWidth)
-            var yy = y
-            lines.take(2).forEach { canvas.drawText(it, tx, yy, paint); yy += paint.fontSpacing }
-            paint.clearShadowLayer()
-            return yy
+        val margin = 28f * density * overlayScale
+        val gap = 16f * density * overlayScale
+        val mapSize = stampMapSizeDp * density * overlayScale
+        val badgeHeight = 30f * density * overlayScale
+        val textLeft = margin + mapSize + gap
+        val rightMargin = margin
+        val textWidth = (output.width - textLeft - rightMargin).coerceAtLeast(80f * density)
+        val textPadding = 14f * density * overlayScale
+        val contentWidth = textWidth - textPadding * 2
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = stampFontColor
+            textSize = stampFontSize * resources.displayMetrics.scaledDensity * overlayScale
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         }
-        var y = top + badgeHeight*overlayScale + 8f*density*overlayScale + 22f*overlayScale
-        y = text(stampTitle, stampFontSize, y, stampFontColor)
-        if (showAddressLine) y = text(stampAddress, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
-        if (showCoordinates) y = text(stampCoords, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
-        if (showDateTime) text(stampDate, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
+        val titleLines = wrapText(stampTitle, textPaint, contentWidth).take(1)
+        val lineItems = mutableListOf<Pair<String, Float>>()
+        if (titleLines.isNotEmpty()) lineItems.add(titleLines.first() to stampFontSize)
+        if (showAddressLine && stampAddress.isNotBlank()) lineItems.add(wrapText(stampAddress, textPaint.apply { textSize = stampFontSize * 0.64f * resources.displayMetrics.scaledDensity * overlayScale }, contentWidth).firstOrNull().orEmpty() to (stampFontSize * 0.64f))
+        if (showCoordinates && stampCoords.isNotBlank()) lineItems.add(stampCoords to (stampFontSize * 0.64f))
+        if (showDateTime && stampDate.isNotBlank()) lineItems.add(stampDate to (stampFontSize * 0.64f))
+        lineItems.add("Note : Captured by GPS Map Camera" to (stampFontSize * 0.58f))
+        val textHeight = lineItems.sumOf { (_, size) -> (size * resources.displayMetrics.scaledDensity * overlayScale * 1.18f).toDouble() }.toFloat()
+        val contentHeight = maxOf(mapSize, textHeight + textPadding * 2)
+        val boxTop = (output.height - contentHeight - margin).coerceAtLeast(margin)
+        val mapRect = RectF(margin, boxTop, margin + mapSize, boxTop + mapSize)
+        val textRect = RectF(textLeft, boxTop, output.width - rightMargin, boxTop + contentHeight)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        // Separate, equally tall map and information boxes with a small gap and photo margins.
+        paint.color = Color.argb(166, 20, 20, 20)
+        canvas.drawRoundRect(textRect, 12f * density * overlayScale, 12f * density * overlayScale, paint)
+        if (mapSnapshot != null) {
+            canvas.save()
+            val mapPath = Path().apply { addRoundRect(mapRect, 10f * density * overlayScale, 10f * density * overlayScale, Path.Direction.CW) }
+            canvas.clipPath(mapPath)
+            canvas.drawBitmap(mapSnapshot!!, null, mapRect, paint)
+            canvas.restore()
+        } else {
+            paint.color = Color.DKGRAY
+            canvas.drawRoundRect(mapRect, 10f * density * overlayScale, 10f * density * overlayScale, paint)
+        }
+        // A clear center pin, consistent with the selected GPS position.
+        val cx = mapRect.centerX(); val cy = mapRect.centerY()
+        paint.color = Color.RED
+        canvas.drawCircle(cx, cy, 7f * density * overlayScale, paint)
+        paint.color = Color.WHITE
+        paint.textSize = 13f * resources.displayMetrics.scaledDensity * overlayScale
+        paint.typeface = Typeface.DEFAULT_BOLD
+        canvas.drawText("OSM", mapRect.left + 8f * density * overlayScale, mapRect.bottom - 8f * density * overlayScale, paint)
+
+        // Small product badge above the right-hand information box, as in the reference photo.
+        val badgeWidth = minOf(180f * density * overlayScale, textRect.width())
+        val badgeRect = RectF(textRect.right - badgeWidth, boxTop - badgeHeight, textRect.right, boxTop)
+        paint.color = Color.argb(190, 20, 20, 20)
+        canvas.drawRoundRect(badgeRect, 8f * density * overlayScale, 8f * density * overlayScale, paint)
+        paint.color = Color.WHITE
+        paint.typeface = Typeface.DEFAULT
+        paint.textSize = 12f * resources.displayMetrics.scaledDensity * overlayScale
+        canvas.drawText("📍 GPS Map Camera", badgeRect.left + 9f * density * overlayScale, badgeRect.centerY() + 4f * density * overlayScale, paint)
+
+        var baseline = textRect.top + textPadding + stampFontSize * resources.displayMetrics.scaledDensity * overlayScale
+        lineItems.forEachIndexed { index, item ->
+            val (raw, size) = item
+            paint.color = stampFontColor
+            paint.textSize = size * resources.displayMetrics.scaledDensity * overlayScale
+            paint.typeface = if (index == 0) Typeface.create("sans-serif", Typeface.NORMAL) else Typeface.create("sans-serif", Typeface.NORMAL)
+            paint.setShadowLayer(1.5f * overlayScale, 0f, 0f, Color.argb(110, 0, 0, 0))
+            // Keep each field on its own line; ellipsize rather than wrapping into the next field.
+            var shown = raw
+            while (shown.isNotEmpty() && paint.measureText(shown) > contentWidth) shown = shown.dropLast(1)
+            if (shown != raw && shown.length > 3) shown = shown.dropLast(1) + "…"
+            canvas.drawText(shown, textRect.left + textPadding, baseline, paint)
+            baseline += paint.fontSpacing * 1.02f
+            paint.clearShadowLayer()
+        }
 
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "GPS_Stamped_${System.currentTimeMillis()}.jpg")

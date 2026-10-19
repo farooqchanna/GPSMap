@@ -27,20 +27,6 @@
         </LinearLayout>
         <TextView android:id="@+id/dateTimeSummary" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:padding="8dp"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Stamp font size" android:textStyle="bold" android:layout_marginTop="12dp"/>
-        <TextView android:id="@+id/fontSizeValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="22 sp"/>
-        <SeekBar android:id="@+id/stampFontSize" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="22" android:progress="8"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Font color" android:textStyle="bold"/>
-        <Spinner android:id="@+id/stampFontColor" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Location map box size" android:textStyle="bold" android:layout_marginTop="8dp"/>
-        <TextView android:id="@+id/mapSizeValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="145 dp"/>
-        <SeekBar android:id="@+id/stampMapSize" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="110" android:progress="55"/>
-        <CheckBox android:id="@+id/showAddressLine" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Show area / address"/>
-        <CheckBox android:id="@+id/showCoordinates" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Show latitude and longitude" android:checked="true"/>
-        <CheckBox android:id="@+id/showDateTime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Show date and time" android:checked="true"/>
         <Button android:id="@+id/applyOptionsButton" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Preview stamp"/>
     </LinearLayout>
