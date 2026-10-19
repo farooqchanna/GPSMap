@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity() {
     private lateinit var photoPreview: ImageView
     private lateinit var emptyHint: TextView
     private lateinit var stampPreview: View
@@ -313,7 +313,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         else { paint.color = Color.DKGRAY; canvas.drawRect(mapRect, paint) }
         // Center marker and directional cone are composited independently of the map SDK snapshot.
         val cx = mapRect.centerX(); val cy = mapRect.centerY()
-        val cone = Path().apply { moveTo(cx, cy); lineTo(cx-mapRect.width*.32f, cy+mapRect.height*.30f); lineTo(cx-mapRect.width*.12f, cy+mapRect.height*.08f); close() }
+        val cone = Path().apply { moveTo(cx, cy); lineTo(cx-mapRect.width()*.32f, cy+mapRect.height()*.30f); lineTo(cx-mapRect.width()*.12f, cy+mapRect.height()*.08f); close() }
         paint.color = Color.argb(102, 33, 150, 243); canvas.drawPath(cone, paint)
         paint.color = Color.RED; canvas.drawCircle(cx, cy, 6f*density*overlayScale, paint)
         paint.color = Color.WHITE; paint.textSize = 16f*resources.displayMetrics.scaledDensity*overlayScale; paint.isFakeBoldText = true
@@ -374,9 +374,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onResume() { super.onResume(); mapView?.onResume() }
-    override fun onStart() { super.onStart(); mapView?.onStart() }
-    override fun onStop() { mapView?.onStop(); super.onStop() }
-    override fun onPause() { mapView?.onPause(); super.onPause() }
+            override fun onPause() { mapView?.onPause(); super.onPause() }
     override fun onDestroy() { mapView?.onDestroy(); super.onDestroy() }
     override fun onLowMemory() { super.onLowMemory(); mapView?.onLowMemory() }
 }
