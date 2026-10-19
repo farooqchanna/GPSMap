@@ -21,11 +21,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.*
-import com.google.android.gms.maps.model.*
-import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.widget.Autocomplete
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.views.overlay.MapEventsOverlay
 import com.google.openlocationcode.OpenLocationCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,7 +47,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var chosenDate = Calendar.getInstance()
     private var currentAddress = "Sehwān, Sindh, Pakistan"
     private var addressLine = "Hyderabad Rd, Sehwān, Sindh, Pakistan"
-    private var map: GoogleMap? = null
+    private var mapMarker: Marker? = null
     private var mapView: MapView? = null
     private var optionsDialog: AlertDialog? = null
     private var stampTitle = "Sehwān, Sindh, Pakistan 🇵🇰"
@@ -61,14 +63,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private val pickPhoto = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { photoUri = it; loadPhoto(it); showOptions() }
     }
-    private val placesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK && result.data != null) {
-            val place = Autocomplete.getPlaceFromIntent(result.data!!)
-            place.latLng?.let { setLocation(it.latitude, it.longitude) }
-        } else if (result.resultCode == AutocompleteActivityMode.OVERLAY.ordinal) {
-            // Cancellation is intentionally non-fatal.
-        }
-    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,13 +78,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         findViewById<Button>(R.id.galleryButton).setOnClickListener { pickPhoto.launch("image/*") }
         findViewById<Button>(R.id.configureButton).setOnClickListener { showOptions() }
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveStampedPhoto() }
-        val key = BuildConfig.MAPS_API_KEY
-        if (key.isNotBlank() && key != "YOUR_MAPS_API_KEY") {
-            if (!Places.isInitialized()) Places.initialize(applicationContext, key)
-        }
+        Configuration.getInstance().userAgentValue = packageName
     }
-
-    private fun getStringResource(name: String): String = BuildConfig.MAPS_API_KEY
 
     private fun launchCamera() {
         val values = ContentValues().apply {
@@ -117,24 +107,48 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_stamp_options, null)
         val mapWidget = dialogView.findViewById<MapView>(R.id.locationMap)
         mapView = mapWidget
-        mapWidget.onCreate(null)
-        mapWidget.getMapAsync(this)
+        mapWidget.setTileSource(TileSourceFactory.MAPNIK)
+        mapWidget.setMultiTouchControls(true)
+        mapWidget.controller.setZoom(16.0)
+        mapWidget.controller.setCenter(GeoPoint(chosenLat, chosenLon))
+        addMapMarker(mapWidget, chosenLat, chosenLon)
+        val mapEvents = object : MapEventsReceiver {
+            override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                setLocation(p.latitude, p.longitude)
+                addMapMarker(mapWidget, p.latitude, p.longitude)
+                return true
+            }
+            override fun longPressHelper(p: GeoPoint): Boolean {
+                setLocation(p.latitude, p.longitude)
+                addMapMarker(mapWidget, p.latitude, p.longitude)
+                return true
+            }
+        }
+        mapWidget.overlays.add(MapEventsOverlay(mapEvents))
+        mapWidget.invalidate()
         val dateSummary = dialogView.findViewById<TextView>(R.id.dateTimeSummary)
         val locationSummary = dialogView.findViewById<TextView>(R.id.locationSummary)
         fun refreshDate() { dateSummary.text = formatDate(chosenDate.time) }
         refreshDate()
         locationSummary.text = "$currentAddress\nLat $chosenLat, Long $chosenLon"
         dialogView.findViewById<Button>(R.id.searchPlaceButton).setOnClickListener {
-            try {
-                val key = getStringResource("maps_api_key")
-                if (!Places.isInitialized() && key.isNotBlank()) Places.initialize(applicationContext, key)
-                val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY,
-                    listOf(com.google.android.libraries.places.api.model.Place.Field.ID,
-                        com.google.android.libraries.places.api.model.Place.Field.LAT_LNG,
-                        com.google.android.libraries.places.api.model.Place.Field.ADDRESS))
-                    .build(this)
-                placesLauncher.launch(intent)
-            } catch (e: Exception) { toast("Check the Maps/Places API key and enabled APIs.") }
+            val input = EditText(this).apply { hint = "Place or address" }
+            AlertDialog.Builder(this).setTitle("Search address").setView(input)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Search") { _, _ ->
+                    val query = input.text.toString().trim()
+                    if (query.isNotBlank()) lifecycleScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            try { Geocoder(this@MainActivity, Locale.getDefault()).getFromLocationName(query, 1)?.firstOrNull() }
+                            catch (_: Exception) { null }
+                        }
+                        if (result != null) {
+                            setLocation(result.latitude, result.longitude)
+                            mapWidget.controller.setCenter(GeoPoint(result.latitude, result.longitude))
+                            addMapMarker(mapWidget, result.latitude, result.longitude)
+                        } else toast("Address not found. Try a more specific search.")
+                    }
+                }.show()
         }
         dialogView.findViewById<Button>(R.id.useGpsButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -171,31 +185,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         optionsDialog?.show()
     }
 
-    override fun onMapReady(googleMap: GoogleMap) {
-        map = googleMap
-        googleMap.mapType = GoogleMap.MAP_TYPE_SATELLITE
-        googleMap.uiSettings.isMapToolbarEnabled = false
-        googleMap.uiSettings.isCompassEnabled = false
-        googleMap.uiSettings.isZoomControlsEnabled = false
-        val pos = LatLng(chosenLat, chosenLon)
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 17.5f))
-        googleMap.addMarker(MarkerOptions().position(pos).draggable(true).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)))
-        googleMap.setOnMapClickListener { latLng ->
-            googleMap.clear()
-            googleMap.addMarker(MarkerOptions().position(latLng).draggable(true))
-            setLocation(latLng.latitude, latLng.longitude)
+    private fun addMapMarker(widget: MapView, lat: Double, lon: Double) {
+        widget.overlays.removeAll { it is Marker }
+        val marker = Marker(widget).apply {
+            position = GeoPoint(lat, lon)
+            title = "Selected location"
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
-        googleMap.setOnMarkerDragListener(object : GoogleMap.OnMarkerDragListener {
-            override fun onMarkerDragStart(marker: Marker) {}
-            override fun onMarkerDrag(marker: Marker) {}
-            override fun onMarkerDragEnd(marker: Marker) { setLocation(marker.position.latitude, marker.position.longitude) }
-        })
+        widget.overlays.add(marker)
+        widget.invalidate()
     }
 
     private fun setLocation(lat: Double, lon: Double) {
         chosenLat = lat; chosenLon = lon
-        val pos = LatLng(lat, lon)
-        map?.let { it.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17.5f)); it.clear(); it.addMarker(MarkerOptions().position(pos).draggable(true)) }
+        mapView?.let {
+            it.controller.animateTo(GeoPoint(lat, lon))
+            addMapMarker(it, lat, lon)
+        }
         lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) { reverseGeocode(lat, lon) }
             currentAddress = data.first
@@ -270,12 +276,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun requestMapSnapshot() {
-        map?.snapshot { bitmap ->
-            if (bitmap != null) {
-                mapSnapshot = bitmap
-                updateStampViews()
-            }
-        }
+        val view = mapView ?: return
+        try {
+            val bitmap = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(bitmap))
+            mapSnapshot = bitmap
+            updateStampViews()
+        } catch (_: Exception) { /* The stamp still works without a map thumbnail. */ }
     }
 
     private fun saveStampedPhoto() {
@@ -310,7 +317,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         paint.color = Color.argb(102, 33, 150, 243); canvas.drawPath(cone, paint)
         paint.color = Color.RED; canvas.drawCircle(cx, cy, 6f*density*overlayScale, paint)
         paint.color = Color.WHITE; paint.textSize = 16f*resources.displayMetrics.scaledDensity*overlayScale; paint.isFakeBoldText = true
-        canvas.drawText("Google", 8f*density*overlayScale, mapRect.bottom-8f*density*overlayScale, paint)
+        canvas.drawText("© OpenStreetMap", 8f*density*overlayScale, mapRect.bottom-8f*density*overlayScale, paint)
 
         val tx = mapRect.right + 12f*density*overlayScale
         val maxWidth = output.width - tx - 12f*density*overlayScale

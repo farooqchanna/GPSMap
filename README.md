@@ -1,30 +1,25 @@
-# GPS Map Camera (Kotlin/XML)
+# GPS Map Camera (Kotlin / Android Studio)
 
-## Setup
-1. Open this folder in Android Studio (JDK 17).
-2. In Google Cloud Console enable **Maps SDK for Android** and **Places API** and configure billing.
-3. Put your key in `local.properties` as `MAPS_API_KEY=YOUR_KEY`, then expose it through a manifest placeholder as shown below.
-4. Restrict the key to your Android package and signing certificate. Never commit a production API key.
+This version uses **OpenStreetMap tiles through osmdroid** instead of Google Maps SDK. It does not require a Google Maps API key or Google Cloud billing.
 
-### Configure API key placeholder
-Add this inside `defaultConfig` in `app/build.gradle.kts`:
-```kotlin
-manifestPlaceholders["MAPS_API_KEY"] = project.findProperty("MAPS_API_KEY") ?: ""
-```
-Then add `MAPS_API_KEY=...` to local.properties. The app uses `com.google.android.geo.API_KEY`.
+## Open and build
+1. Extract this folder and open it in Android Studio.
+2. Install/use **JDK 17** and Android SDK Platform 35 (Android Studio can install these from SDK Manager).
+3. Let Gradle sync. The project-level plugin is Android Gradle Plugin 8.7.3 and the wrapper is configured for Gradle 8.9.
+4. Build with **Build > Make Project** or run `./gradlew assembleDebug` (Windows: `gradlew.bat assembleDebug`).
+5. The APK, if the build succeeds, will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Included
-- Camera intent (`TakePicture`) and gallery image picker
-- Options dialog shown before stamp composition
-- Google Places Autocomplete, draggable/tappable satellite map, reverse geocoding, plus code
-- Date and time pickers with requested format
-- XML stamp layout and JPEG gallery output using MediaStore
+No `local.properties` API key entry is needed. Android Studio normally creates `local.properties` automatically to point to your local Android SDK. Do not commit that machine-specific file.
 
-## Notes before shipping
-- This is a starter project, not a tested release build. Validate API versions and layout on your target SDK/device.
-- The MapView snapshot includes Google's required map attribution. Do not remove or obscure attribution. The sample's extra "Google" text is illustrative; for production, use the official attribution asset and its required clear space.
-- Android's Geocoder is service-dependent and may return incomplete addresses. Plus codes are generated locally.
-- The sample uses a small country-to-flag lookup; extend it with ISO 3166 country codes for global coverage.
-- The stamp is composed onto the source bitmap. Map snapshot dimensions and UI density differ by device; tune canvas scale/line wrapping for your desired export fidelity.
-- For production CameraX, add `androidx.camera:camera-camera2`, `camera-lifecycle`, and `camera-view`; this sample uses the system camera via `TakePicture`.
-- No broad storage permission is needed for saving to MediaStore on Android 10+; the manifest intentionally avoids obsolete `WRITE_EXTERNAL_STORAGE`.
+## Features
+- Take a photo with the device's camera or select one from the gallery.
+- View an OpenStreetMap map, tap to choose a location, or search an address with Android's Geocoder.
+- Use the device's current GPS location (grant location permission when prompted).
+- Stamp location/address, coordinates, plus code, and selected date/time onto the photo.
+- Save the stamped JPEG to `Pictures/GPSMapCamera`.
+
+## Notes
+- Google Maps SDK itself cannot be used without a Google Maps API key. This project avoids that requirement by using OpenStreetMap instead.
+- Map tiles and address search need an internet connection. Address lookup uses Android's Geocoder service, which can vary by device. Coordinates and plus codes are generated locally.
+- OpenStreetMap data attribution is included. Respect the OpenStreetMap tile usage policy; for high-volume production use, configure an appropriate tile provider.
+- This source project has not been built in this environment because Android SDK/Gradle tooling is not installed here. Please run a build in Android Studio or CI and share any new error text if one appears.
