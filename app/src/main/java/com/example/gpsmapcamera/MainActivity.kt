@@ -54,6 +54,12 @@ class MainActivity : AppCompatActivity() {
     private var stampAddress = ""
     private var stampCoords = ""
     private var stampDate = ""
+    private var stampFontSize = 22f
+    private var stampFontColor = Color.WHITE
+    private var stampMapSizeDp = 145f
+    private var showAddressLine = true
+    private var showCoordinates = true
+    private var showDateTime = true
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) launchCamera() else toast("Camera permission is required to take a photo.")
     }
@@ -126,6 +132,45 @@ class MainActivity : AppCompatActivity() {
         }
         mapWidget.overlays.add(MapEventsOverlay(mapEvents))
         mapWidget.invalidate()
+        val fontSizeControl = dialogView.findViewById<SeekBar>(R.id.stampFontSize)
+        fontSizeControl.progress = (stampFontSize - 14f).toInt().coerceIn(0, 22)
+        dialogView.findViewById<TextView>(R.id.fontSizeValue).text = "${stampFontSize.toInt()} sp"
+        fontSizeControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                stampFontSize = (14 + progress).toFloat()
+                dialogView.findViewById<TextView>(R.id.fontSizeValue).text = "${stampFontSize.toInt()} sp"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        val mapSizeControl = dialogView.findViewById<SeekBar>(R.id.stampMapSize)
+        mapSizeControl.progress = (stampMapSizeDp - 90f).toInt().coerceIn(0, 110)
+        dialogView.findViewById<TextView>(R.id.mapSizeValue).text = "${stampMapSizeDp.toInt()} dp"
+        mapSizeControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                stampMapSizeDp = (90 + progress).toFloat()
+                dialogView.findViewById<TextView>(R.id.mapSizeValue).text = "${stampMapSizeDp.toInt()} dp"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        val colorSpinner = dialogView.findViewById<Spinner>(R.id.stampFontColor)
+        val colors = listOf("White", "Yellow", "Cyan", "Green", "Orange", "Pink")
+        colorSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, colors)
+        colorSpinner.setSelection(listOf(Color.WHITE, Color.YELLOW, Color.CYAN, Color.GREEN, 0xFFFFA500.toInt(), Color.MAGENTA).indexOf(stampFontColor).coerceAtLeast(0))
+        colorSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                stampFontColor = listOf(Color.WHITE, Color.YELLOW, Color.CYAN, Color.GREEN, 0xFFFFA500.toInt(), Color.MAGENTA)[position]
+            }
+        }
+        dialogView.findViewById<CheckBox>(R.id.showAddressLine).isChecked = showAddressLine
+        dialogView.findViewById<CheckBox>(R.id.showCoordinates).isChecked = showCoordinates
+        dialogView.findViewById<CheckBox>(R.id.showDateTime).isChecked = showDateTime
+        dialogView.findViewById<CheckBox>(R.id.showAddressLine).setOnCheckedChangeListener { _, checked -> showAddressLine = checked }
+        dialogView.findViewById<CheckBox>(R.id.showCoordinates).setOnCheckedChangeListener { _, checked -> showCoordinates = checked }
+        dialogView.findViewById<CheckBox>(R.id.showDateTime).setOnCheckedChangeListener { _, checked -> showDateTime = checked }
+
         val dateSummary = dialogView.findViewById<TextView>(R.id.dateTimeSummary)
         val locationSummary = dialogView.findViewById<TextView>(R.id.locationSummary)
         fun refreshDate() { dateSummary.text = formatDate(chosenDate.time) }
@@ -293,8 +338,8 @@ class MainActivity : AppCompatActivity() {
         val density = resources.displayMetrics.density
         val scale = output.width / photoPreview.width.coerceAtLeast(1).toFloat()
         val overlayScale = scale.coerceAtLeast(1f)
-        val boxHeight = 160f * density * overlayScale
-        val mapSize = 145f * density
+        val boxHeight = maxOf(160f * density, (stampMapSizeDp + 32f) * density) * overlayScale
+        val mapSize = stampMapSizeDp * density
         val badgeHeight = 26f * density
         val left = 0f
         val top = (output.height - boxHeight - 8f * density * overlayScale).coerceAtLeast(0f)
@@ -331,10 +376,10 @@ class MainActivity : AppCompatActivity() {
             return yy
         }
         var y = top + badgeHeight*overlayScale + 8f*density*overlayScale + 22f*overlayScale
-        y = text(stampTitle, 22f, y)
-        y = text(stampAddress, 14f, y+2f*overlayScale, Color.rgb(245,245,245))
-        y = text(stampCoords, 14f, y+2f*overlayScale, Color.rgb(245,245,245))
-        text(stampDate, 14f, y+2f*overlayScale, Color.rgb(245,245,245))
+        y = text(stampTitle, stampFontSize, y, stampFontColor)
+        if (showAddressLine) y = text(stampAddress, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
+        if (showCoordinates) y = text(stampCoords, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
+        if (showDateTime) text(stampDate, stampFontSize * 0.64f, y+2f*overlayScale, stampFontColor)
 
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "GPS_Stamped_${System.currentTimeMillis()}.jpg")
