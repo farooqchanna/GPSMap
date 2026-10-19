@@ -4,7 +4,8 @@
     android:id="@+id/stampRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
+    android:orientation="horizontal"
+    android:gravity="bottom"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:paddingBottom="16dp"
@@ -12,102 +13,106 @@
     android:clipToPadding="false"
     android:background="@android:color/transparent">
 
-    <!-- Top Badge floating directly above the Location Info Box -->
+    <!-- Box 1: Separate Map Box (Square with Rounded Corners, Bottom-Aligned) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/stampMapCard"
+        android:layout_width="122dp"
+        android:layout_height="122dp"
+        android:layout_gravity="bottom"
+        app:cardBackgroundColor="#212429"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp"
+        app:cardPreventCornerOverlap="false"
+        app:strokeWidth="0dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Satellite / street map thumbnail -->
+            <ImageView
+                android:id="@+id/stampMapImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Map satellite view"
+                android:scaleType="centerCrop" />
+
+            <!-- Red Google Location Pin centered on map -->
+            <ImageView
+                android:id="@+id/stampMapPin"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:contentDescription="Location Pin"
+                android:src="@drawable/ic_red_pin" />
+
+            <!-- Google watermark text at bottom-left -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_marginStart="8dp"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-bold"
+                android:shadowColor="#B3000000"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="3"
+                android:text="Google"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Right Container: Top Badge and Location Info Box joined as ONE unified box (0 space) -->
     <LinearLayout
-        android:id="@+id/stampBadge"
-        android:layout_width="wrap_content"
+        android:id="@+id/stampRightContainer"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="end"
-        android:layout_marginBottom="4dp"
-        android:background="@drawable/bg_stamp_badge"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingTop="3dp"
-        android:paddingEnd="9dp"
-        android:paddingBottom="3dp">
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
 
-        <ImageView
-            android:layout_width="14dp"
-            android:layout_height="14dp"
-            android:contentDescription="GPS Map Camera App Icon"
-            android:src="@drawable/ic_gps_badge_logo" />
-
-        <TextView
+        <!-- Attached Top Badge: directly flush with location box (no space) -->
+        <LinearLayout
+            android:id="@+id/stampBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
-            android:fontFamily="sans-serif"
-            android:text="GPS Map Camera"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp" />
-    </LinearLayout>
+            android:layout_gravity="end"
+            android:layout_marginBottom="0dp"
+            android:background="@drawable/bg_stamp_badge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="7dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="9dp"
+            android:paddingBottom="2dp">
 
-    <!-- Bottom Row: Box 1 (Map) and Box 2 (Location Info), BOTTOM ALIGNED -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="bottom"
-        android:orientation="horizontal">
+            <!-- Camera lens logo matching the user's reference image -->
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="GPS Map Camera Lens Icon"
+                android:src="@drawable/ic_gps_camera_lens_logo" />
 
-        <!-- Box 1: Separate Map Box (Square with Rounded Corners) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/stampMapCard"
-            android:layout_width="122dp"
-            android:layout_height="122dp"
-            app:cardBackgroundColor="#212429"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:cardPreventCornerOverlap="false"
-            app:strokeWidth="0dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:fontFamily="sans-serif"
+                android:text="GPS Map Camera"
+                android:textColor="#FFFFFF"
+                android:textSize="10.5sp" />
+        </LinearLayout>
 
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <!-- Satellite map thumbnail -->
-                <ImageView
-                    android:id="@+id/stampMapImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="Map satellite view"
-                    android:scaleType="centerCrop" />
-
-                <!-- Red Google Location Pin centered on map -->
-                <ImageView
-                    android:id="@+id/stampMapPin"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="Location Pin"
-                    android:src="@drawable/ic_red_pin" />
-
-                <!-- Google watermark text at bottom-left -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|start"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginBottom="6dp"
-                    android:fontFamily="sans-serif-bold"
-                    android:shadowColor="#B3000000"
-                    android:shadowDx="1"
-                    android:shadowDy="1"
-                    android:shadowRadius="3"
-                    android:text="Google"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-            </FrameLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Box 2: Separate Location and Info Box (Taller, Rounded Corners) -->
+        <!-- Location and Info Box: connected directly beneath badge with 0 margin -->
         <LinearLayout
             android:id="@+id/stampInfoBox"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
+            android:layout_marginTop="0dp"
             android:background="@drawable/bg_stamp_box"
             android:orientation="vertical"
             android:paddingStart="12dp"

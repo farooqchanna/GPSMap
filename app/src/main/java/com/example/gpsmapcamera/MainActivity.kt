@@ -32,6 +32,9 @@ import com.google.openlocationcode.OpenLocationCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -85,6 +88,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.configureButton).setOnClickListener { showOptions() }
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveStampedPhoto() }
         Configuration.getInstance().userAgentValue = packageName
+        val osmPath = File(cacheDir, "osmdroid")
+        Configuration.getInstance().osmdroidBasePath = osmPath
+        Configuration.getInstance().osmdroidTileCache = File(osmPath, "tiles")
+        buildStampText()
+        fetchMapSnapshot(chosenLat, chosenLon)
     }
 
     private fun launchCamera() {
@@ -106,6 +114,10 @@ class MainActivity : AppCompatActivity() {
             stampPreview.visibility = View.VISIBLE
             findViewById<Button>(R.id.configureButton).isEnabled = true
             findViewById<Button>(R.id.saveButton).isEnabled = true
+            updateStampViews()
+            if (mapSnapshot == null) {
+                fetchMapSnapshot(chosenLat, chosenLon)
+            }
         } catch (e: Exception) { toast("Unable to open this image.") }
     }
 
@@ -225,6 +237,7 @@ class MainActivity : AppCompatActivity() {
             buildStampText()
             updateStampViews()
             optionsDialog?.dismiss()
+            fetchMapSnapshot(chosenLat, chosenLon)
             requestMapSnapshot()
         }
         optionsDialog?.show()
@@ -247,6 +260,7 @@ class MainActivity : AppCompatActivity() {
             it.controller.animateTo(GeoPoint(lat, lon))
             addMapMarker(it, lat, lon)
         }
+        fetchMapSnapshot(lat, lon)
         lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) { reverseGeocode(lat, lon) }
             currentAddress = data.first
@@ -456,12 +470,71 @@ class MainActivity : AppCompatActivity() {
         val infoHeight = totalTextHeight + padY * 2
         val infoRect = RectF(infoLeft, baselineBottom - infoHeight, infoRight, baselineBottom)
 
+        // Attached Top Badge: directly flush with location box (NO space between them)
+        val badgeHeight = infoWidth * 0.13f
+        val badgePaddingX = badgeHeight * 0.40f
+        val badgeBottom = infoRect.top // ZERO GAP: flush on top of location box
+        val badgeTop = badgeBottom - badgeHeight
+
+        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = badgeHeight * 0.46f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            color = Color.WHITE
+        }
+        val badgeText = "GPS Map Camera"
+        val badgeTextWidth = badgePaint.measureText(badgeText)
+        val iconSize = badgeHeight * 0.62f
+        val iconGap = badgeHeight * 0.22f
+        val badgeWidth = badgePaddingX * 2 + iconSize + iconGap + badgeTextWidth
+        val badgeLeft = infoRect.right - badgeWidth
+        val badgeRight = infoRect.right
+        val badgeRect = RectF(badgeLeft, badgeTop, badgeRight, badgeBottom)
+        val badgeRadius = badgeHeight * 0.30f
+
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        // Draw Box 2 (Location and Info Box background)
+        // Draw ONE unified box: Location Box body + flush Top Badge tab
         paint.style = Paint.Style.FILL
         paint.color = Color.argb(184, 21, 23, 27) // ~72% opacity dark charcoal
         canvas.drawRoundRect(infoRect, cornerRadius, cornerRadius, paint)
+        val badgeTabPath = Path().apply {
+            addRoundRect(
+                badgeRect,
+                floatArrayOf(badgeRadius, badgeRadius, badgeRadius, badgeRadius, 0f, 0f, 0f, 0f),
+                Path.Direction.CW
+            )
+        }
+        canvas.drawPath(badgeTabPath, paint)
+
+        // Draw Camera Lens Logo inside badge (matching user's reference image 1)
+        val iconCenterX = badgeRect.left + badgePaddingX + iconSize / 2f
+        val iconCenterY = badgeRect.centerY()
+        val r = iconSize / 2f
+
+        // 1. Golden Yellow outer camera ring
+        paint.color = Color.rgb(255, 184, 0)
+        canvas.drawCircle(iconCenterX, iconCenterY, r, paint)
+
+        // 2. Slate blue-grey lens bezel
+        paint.color = Color.rgb(69, 77, 96)
+        canvas.drawCircle(iconCenterX, iconCenterY, r * 0.77f, paint)
+
+        // 3. Dark navy inner lens body
+        paint.color = Color.rgb(38, 42, 54)
+        canvas.drawCircle(iconCenterX, iconCenterY, r * 0.58f, paint)
+
+        // 4. Deep black center pupil/sensor
+        paint.color = Color.rgb(17, 19, 24)
+        canvas.drawCircle(iconCenterX, iconCenterY, r * 0.38f, paint)
+
+        // 5. Specular highlight dots
+        paint.color = Color.WHITE
+        canvas.drawCircle(iconCenterX + r * 0.22f, iconCenterY - r * 0.22f, r * 0.16f, paint)
+        canvas.drawCircle(iconCenterX + r * 0.38f, iconCenterY + r * 0.10f, r * 0.08f, paint)
+
+        // Draw badge text
+        val badgeTextBaseline = badgeRect.centerY() - (badgePaint.descent() + badgePaint.ascent()) / 2f
+        canvas.drawText(badgeText, badgeRect.left + badgePaddingX + iconSize + iconGap, badgeTextBaseline, badgePaint)
 
         // Draw Box 1 (Map Box with rounded corners)
         val mapClipPath = Path().apply {
@@ -469,12 +542,8 @@ class MainActivity : AppCompatActivity() {
         }
         canvas.save()
         canvas.clipPath(mapClipPath)
-        if (mapSnapshot != null) {
-            canvas.drawBitmap(mapSnapshot!!, null, mapRect, paint)
-        } else {
-            paint.color = Color.rgb(33, 36, 41)
-            canvas.drawRect(mapRect, paint)
-        }
+        val currentSnapshot = mapSnapshot ?: generateFallbackMapBitmap(chosenLat, chosenLon)
+        canvas.drawBitmap(currentSnapshot, null, mapRect, paint)
 
         // Draw center red pin on Map Box
         val pinCenterX = mapRect.centerX()
@@ -533,44 +602,6 @@ class MainActivity : AppCompatActivity() {
         paint.clearShadowLayer()
         canvas.restore()
 
-        // Draw Floating Badge atop Box 2 (aligned to infoRect.right)
-        val badgeHeight = infoWidth * 0.14f
-        val badgePaddingX = badgeHeight * 0.36f
-        val badgeBottom = infoRect.top - h * 0.005f
-        val badgeTop = badgeBottom - badgeHeight
-
-        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = badgeHeight * 0.46f
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-            color = Color.WHITE
-        }
-        val badgeText = "GPS Map Camera"
-        val badgeTextWidth = badgePaint.measureText(badgeText)
-        val iconSize = badgeHeight * 0.56f
-        val iconGap = badgeHeight * 0.22f
-        val badgeWidth = badgePaddingX * 2 + iconSize + iconGap + badgeTextWidth
-        val badgeLeft = infoRect.right - badgeWidth
-        val badgeRight = infoRect.right
-        val badgeRect = RectF(badgeLeft, badgeTop, badgeRight, badgeBottom)
-        val badgeRadius = badgeHeight * 0.28f
-
-        paint.color = Color.argb(205, 24, 26, 29)
-        canvas.drawRoundRect(badgeRect, badgeRadius, badgeRadius, paint)
-
-        // Badge Icon
-        val iconLeft = badgeRect.left + badgePaddingX
-        val iconTop = badgeRect.centerY() - iconSize / 2f
-        val iconRect = RectF(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-        paint.color = Color.rgb(52, 168, 83)
-        canvas.drawRoundRect(iconRect, iconSize * 0.22f, iconSize * 0.22f, paint)
-        paint.color = Color.rgb(251, 188, 4)
-        canvas.drawCircle(iconRect.centerX(), iconRect.centerY() - iconSize * 0.06f, iconSize * 0.24f, paint)
-        paint.color = Color.WHITE
-        canvas.drawCircle(iconRect.centerX(), iconRect.centerY() - iconSize * 0.06f, iconSize * 0.10f, paint)
-
-        val badgeTextBaseline = badgeRect.centerY() - (badgePaint.descent() + badgePaint.ascent()) / 2f
-        canvas.drawText(badgeText, iconLeft + iconSize + iconGap, badgeTextBaseline, badgePaint)
-
         // Draw Text Lines in Box 2
         var currentY = infoRect.top + padY + titleSize * 0.88f
         for (i in linesToDraw.indices) {
@@ -596,6 +627,77 @@ class MainActivity : AppCompatActivity() {
             }
             toast("Stamped photo saved to Pictures/GPSMapCamera")
         } catch (e: Exception) { toast("Save failed: ${e.message}") }
+    }
+
+    private fun fetchMapSnapshot(lat: Double, lon: Double) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val tile = downloadSatelliteMapTile(lat, lon) ?: generateFallbackMapBitmap(lat, lon)
+            withContext(Dispatchers.Main) {
+                mapSnapshot = tile
+                updateStampViews()
+            }
+        }
+    }
+
+    private fun downloadSatelliteMapTile(lat: Double, lon: Double): Bitmap? {
+        val zoom = 16
+        val n = 1 shl zoom
+        val xExact = (lon + 180.0) / 360.0 * n
+        val latRad = Math.toRadians(lat)
+        val yExact = (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * n
+        val tileX = xExact.toInt()
+        val tileY = yExact.toInt()
+
+        val urls = listOf(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$tileY/$tileX.jpg",
+            "https://tile.openstreetmap.org/$zoom/$tileX/$tileY.png"
+        )
+
+        for (urlString in urls) {
+            try {
+                val url = URL(urlString)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.setRequestProperty("User-Agent", "GPSMapCamera/1.0 (Android; dev@gpsmapcamera.local)")
+                conn.connectTimeout = 3500
+                conn.readTimeout = 3500
+                if (conn.responseCode == 200) {
+                    val stream = conn.inputStream
+                    val original = BitmapFactory.decodeStream(stream)
+                    stream.close()
+                    conn.disconnect()
+                    if (original != null) {
+                        return original
+                    }
+                }
+                conn.disconnect()
+            } catch (_: Exception) { }
+        }
+        return null
+    }
+
+    private fun generateFallbackMapBitmap(lat: Double, lon: Double): Bitmap {
+        val size = 256
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        p.color = Color.rgb(36, 44, 38)
+        c.drawRect(0f, 0f, size.toFloat(), size.toFloat(), p)
+
+        p.color = Color.rgb(46, 58, 48)
+        c.drawRect(20f, 15f, 110f, 120f, p)
+        c.drawRect(130f, 30f, 240f, 100f, p)
+        c.drawRect(15f, 140f, 125f, 245f, p)
+        c.drawRect(145f, 120f, 245f, 240f, p)
+
+        p.color = Color.rgb(75, 85, 78)
+        p.strokeWidth = 3f
+        p.style = Paint.Style.STROKE
+        c.drawLine(0f, 130f, 256f, 115f, p)
+        c.drawLine(125f, 0f, 135f, 256f, p)
+        p.style = Paint.Style.FILL
+
+        return bmp
     }
 
     private fun wrapText(value: String, paint: Paint, width: Float): List<String> {
