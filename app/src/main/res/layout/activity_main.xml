@@ -1,0 +1,34 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:gravity="center_horizontal"
+    android:background="#101114">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="GPS Map Camera" android:textColor="#FFFFFF" android:textSize="26sp"
+        android:textStyle="bold" android:layout_marginBottom="16dp"/>
+    <FrameLayout android:id="@+id/previewContainer" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:background="#24262B">
+        <ImageView android:id="@+id/photoPreview" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:scaleType="fitCenter"
+            android:contentDescription="Selected photo preview"/>
+        <include android:id="@+id/stampPreview" layout="@layout/stamp_overlay"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="bottom" android:layout_marginBottom="8dp"
+            android:visibility="gone"/>
+        <TextView android:id="@+id/emptyHint" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:gravity="center"
+            android:text="Capture or choose a photo to begin" android:textColor="#BFC3CA"
+            android:textSize="16sp"/>
+    </FrameLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center" android:layout_marginTop="16dp">
+        <Button android:id="@+id/captureButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:text="Camera"/>
+        <Space android:layout_width="8dp" android:layout_height="1dp"/>
+        <Button android:id="@+id/galleryButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:text="Gallery"/>
+    </LinearLayout>
+    <Button android:id="@+id/configureButton" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="Configure stamp" android:enabled="false"/>
+    <Button android:id="@+id/saveButton" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="Save Stamped Photo" android:enabled="false"/>
+</LinearLayout>

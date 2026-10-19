@@ -1,0 +1,33 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="16dp">
+        <Button android:id="@+id/searchPlaceButton" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Search a place"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Tap the map or drag the pin to choose a location" android:textSize="12sp"
+            android:layout_marginTop="4dp"/>
+        <com.google.android.gms.maps.MapView android:id="@+id/locationMap"
+            android:layout_width="match_parent" android:layout_height="220dp"
+            android:layout_marginTop="8dp"/>
+        <Button android:id="@+id/useGpsButton" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Use current GPS location"/>
+        <TextView android:id="@+id/locationSummary" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Choose a location"
+            android:padding="8dp" android:textSize="13sp"/>
+        <CheckBox android:id="@+id/useCurrentTime" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Use current date and time"
+            android:checked="true"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/pickDateButton" android:layout_width="0dp"
+                android:layout_weight="1" android:layout_height="wrap_content" android:text="Choose date"/>
+            <Button android:id="@+id/pickTimeButton" android:layout_width="0dp"
+                android:layout_weight="1" android:layout_height="wrap_content" android:text="Choose time"/>
+        </LinearLayout>
+        <TextView android:id="@+id/dateTimeSummary" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:padding="8dp"/>
+        <Button android:id="@+id/applyOptionsButton" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Preview stamp"/>
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.GpsMapCamera" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#1967D2</item>
+        <item name="colorPrimaryVariant">#174EA6</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+    </style>
+</resources>
