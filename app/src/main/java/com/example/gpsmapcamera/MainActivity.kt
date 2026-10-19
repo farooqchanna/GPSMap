@@ -42,21 +42,21 @@ class MainActivity : AppCompatActivity() {
     private var photoUri: Uri? = null
     private var photoBitmap: Bitmap? = null
     private var mapSnapshot: Bitmap? = null
-    private var chosenLat = 26.411997
-    private var chosenLon = 67.864260
+    private var chosenLat = 25.366589
+    private var chosenLon = 68.505276
     private var chosenDate = Calendar.getInstance()
-    private var currentAddress = "Sehwān, Sindh, Pakistan"
-    private var addressLine = "Hyderabad Rd, Sehwān, Sindh, Pakistan"
+    private var currentAddress = "Pahore, Sindh, Pakistan"
+    private var addressLine = "Abbas Khan, Pahore, Sindh , Pakistan"
     private var mapMarker: Marker? = null
     private var mapView: MapView? = null
     private var optionsDialog: AlertDialog? = null
-    private var stampTitle = "Sehwān, Sindh, Pakistan 🇵🇰"
+    private var stampTitle = "Pahore, Sindh, Pakistan 🇵🇰"
     private var stampAddress = ""
     private var stampCoords = ""
     private var stampDate = ""
-    private var stampFontSize = 22f
+    private var stampFontSize = 18f
     private var stampFontColor = Color.WHITE
-    private var stampMapSizeDp = 145f
+    private var stampMapSizeDp = 122f
     private var showAddressLine = true
     private var showCoordinates = true
     private var showDateTime = true
@@ -282,12 +282,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildStampText() {
-        val locale = Locale.getDefault()
         val parts = currentAddress.split(",").map { it.trim() }
         val country = parts.lastOrNull().orEmpty()
-        stampTitle = "$currentAddress ${countryFlag(country)}".trim()
-        val plus = try { OpenLocationCode(chosenLat, chosenLon).code } catch (_: Exception) { "" }
-        stampAddress = (if (plus.isNotBlank()) "$plus, " else "") + addressLine
+        val flag = countryFlag(country)
+        stampTitle = if (flag.isNotEmpty()) "$currentAddress $flag" else currentAddress
+
+        val plus = try {
+            val full = OpenLocationCode(chosenLat, chosenLon).code
+            val idx = full.indexOf('+')
+            if (idx >= 4) full.substring(idx - 4).lowercase(Locale.ROOT) else full.lowercase(Locale.ROOT)
+        } catch (_: Exception) { "" }
+
+        stampAddress = if (plus.isNotBlank() && addressLine.isNotBlank()) {
+            "$plus $addressLine"
+        } else if (plus.isNotBlank()) {
+            plus
+        } else {
+            addressLine
+        }
+
         stampCoords = String.format(Locale.US, "Lat %.6f° Long %.6f°", chosenLat, chosenLon)
         stampDate = formatDate(chosenDate.time)
     }
@@ -313,11 +326,43 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStampViews() {
         val root = stampPreview
-        root.findViewById<TextView>(R.id.stampTitle)?.text = stampTitle
-        root.findViewById<TextView>(R.id.stampAddress)?.text = stampAddress
-        root.findViewById<TextView>(R.id.stampCoordinates)?.text = stampCoords
-        root.findViewById<TextView>(R.id.stampDateTime)?.text = stampDate
+        root.findViewById<TextView>(R.id.stampTitle)?.apply {
+            text = stampTitle
+            setTextColor(stampFontColor)
+            textSize = stampFontSize
+        }
+        val bodySize = stampFontSize * 0.64f
+        root.findViewById<TextView>(R.id.stampAddress)?.apply {
+            text = stampAddress
+            setTextColor(stampFontColor)
+            textSize = bodySize
+            visibility = if (showAddressLine && stampAddress.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        root.findViewById<TextView>(R.id.stampCoordinates)?.apply {
+            text = stampCoords
+            setTextColor(stampFontColor)
+            textSize = bodySize
+            visibility = if (showCoordinates && stampCoords.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        root.findViewById<TextView>(R.id.stampDateTime)?.apply {
+            text = stampDate
+            setTextColor(stampFontColor)
+            textSize = bodySize
+            visibility = if (showDateTime && stampDate.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        root.findViewById<TextView>(R.id.stampNote)?.apply {
+            text = "Note : Captured by GPS Map Camera"
+            setTextColor(stampFontColor)
+            textSize = bodySize
+        }
         root.findViewById<ImageView>(R.id.stampMapImage)?.setImageBitmap(mapSnapshot)
+        val mapCard = root.findViewById<View>(R.id.stampMapCard)
+        mapCard?.layoutParams?.let {
+            val sizePx = (stampMapSizeDp * resources.displayMetrics.density).toInt()
+            it.width = sizePx
+            it.height = sizePx
+            mapCard.layoutParams = it
+        }
     }
 
     private fun requestMapSnapshot() {
@@ -335,83 +380,207 @@ class MainActivity : AppCompatActivity() {
         buildStampText()
         val output = source.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
-        val density = resources.displayMetrics.density
-        val scale = output.width / photoPreview.width.coerceAtLeast(1).toFloat()
-        val overlayScale = scale.coerceAtLeast(1f)
-        val margin = 28f * density * overlayScale
-        val gap = 16f * density * overlayScale
-        val mapSize = stampMapSizeDp * density * overlayScale
-        val badgeHeight = 30f * density * overlayScale
-        val textLeft = margin + mapSize + gap
-        val rightMargin = margin
-        val textWidth = (output.width - textLeft - rightMargin).coerceAtLeast(80f * density)
-        val textPadding = 14f * density * overlayScale
-        val contentWidth = textWidth - textPadding * 2
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+        val w = output.width.toFloat()
+        val h = output.height.toFloat()
+
+        // Proportional spacing calibrated exactly to the reference photo
+        val marginX = w * 0.038f
+        val marginY = h * 0.032f
+        val gap = w * 0.024f
+        val baselineBottom = h - marginY
+
+        // Box 1: Square Map Box (1:1 ratio)
+        val mapSize = w * 0.285f
+        val mapRect = RectF(marginX, baselineBottom - mapSize, marginX + mapSize, baselineBottom)
+
+        // Box 2: Location and Info Box (Taller, sits beside the map box)
+        val infoLeft = marginX + mapSize + gap
+        val infoRight = w - marginX
+        val infoWidth = infoRight - infoLeft
+
+        // Corner radius for both boxes
+        val cornerRadius = w * 0.022f
+
+        // Internal padding of Info Box
+        val padX = infoWidth * 0.060f
+        val padY = infoWidth * 0.052f
+        val contentWidth = infoWidth - padX * 2
+
+        val titleSize = infoWidth * 0.066f
+        val bodySize = infoWidth * 0.043f
+
+        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = stampFontColor
-            textSize = stampFontSize * resources.displayMetrics.scaledDensity * overlayScale
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textSize = titleSize
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setShadowLayer(2f, 0f, 1f, Color.argb(120, 0, 0, 0))
         }
-        val titleLines = wrapText(stampTitle, textPaint, contentWidth).take(1)
-        val lineItems = mutableListOf<Pair<String, Float>>()
-        if (titleLines.isNotEmpty()) lineItems.add(titleLines.first() to stampFontSize)
-        if (showAddressLine && stampAddress.isNotBlank()) lineItems.add(wrapText(stampAddress, textPaint.apply { textSize = stampFontSize * 0.64f * resources.displayMetrics.scaledDensity * overlayScale }, contentWidth).firstOrNull().orEmpty() to (stampFontSize * 0.64f))
-        if (showCoordinates && stampCoords.isNotBlank()) lineItems.add(stampCoords to (stampFontSize * 0.64f))
-        if (showDateTime && stampDate.isNotBlank()) lineItems.add(stampDate to (stampFontSize * 0.64f))
-        lineItems.add("Note : Captured by GPS Map Camera" to (stampFontSize * 0.58f))
-        val textHeight = lineItems.sumOf { (_, size) -> (size * resources.displayMetrics.scaledDensity * overlayScale * 1.18f).toDouble() }.toFloat()
-        val contentHeight = maxOf(mapSize, textHeight + textPadding * 2)
-        val boxTop = (output.height - contentHeight - margin).coerceAtLeast(margin)
-        val mapRect = RectF(margin, boxTop, margin + mapSize, boxTop + mapSize)
-        val textRect = RectF(textLeft, boxTop, output.width - rightMargin, boxTop + contentHeight)
+
+        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = stampFontColor
+            textSize = bodySize
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            setShadowLayer(2f, 0f, 1f, Color.argb(120, 0, 0, 0))
+        }
+
+        fun ellipsizeText(text: String, paint: Paint, maxW: Float): String {
+            if (paint.measureText(text) <= maxW) return text
+            var t = text
+            while (t.isNotEmpty() && paint.measureText("$t…") > maxW) {
+                t = t.dropLast(1)
+            }
+            return if (t.isEmpty()) "" else "$t…"
+        }
+
+        // Prepare visible text lines
+        val linesToDraw = mutableListOf<Pair<String, Paint>>()
+        linesToDraw.add(Pair(stampTitle, titlePaint))
+        if (showAddressLine && stampAddress.isNotBlank()) {
+            linesToDraw.add(Pair(stampAddress, bodyPaint))
+        }
+        if (showCoordinates && stampCoords.isNotBlank()) {
+            linesToDraw.add(Pair(stampCoords, bodyPaint))
+        }
+        if (showDateTime && stampDate.isNotBlank()) {
+            linesToDraw.add(Pair(stampDate, bodyPaint))
+        }
+        linesToDraw.add(Pair("Note : Captured by GPS Map Camera", bodyPaint))
+
+        // Calculate height required for Info Box
+        val lineSpacing = bodySize * 0.32f
+        var totalTextHeight = titleSize
+        for (i in 1 until linesToDraw.size) {
+            totalTextHeight += lineSpacing + bodySize
+        }
+        val infoHeight = totalTextHeight + padY * 2
+        val infoRect = RectF(infoLeft, baselineBottom - infoHeight, infoRight, baselineBottom)
+
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        // Separate, equally tall map and information boxes with a small gap and photo margins.
-        paint.color = Color.argb(166, 20, 20, 20)
-        canvas.drawRoundRect(textRect, 12f * density * overlayScale, 12f * density * overlayScale, paint)
-        if (mapSnapshot != null) {
-            canvas.save()
-            val mapPath = Path().apply { addRoundRect(mapRect, 10f * density * overlayScale, 10f * density * overlayScale, Path.Direction.CW) }
-            canvas.clipPath(mapPath)
-            canvas.drawBitmap(mapSnapshot!!, null, mapRect, paint)
-            canvas.restore()
-        } else {
-            paint.color = Color.DKGRAY
-            canvas.drawRoundRect(mapRect, 10f * density * overlayScale, 10f * density * overlayScale, paint)
+        // Draw Box 2 (Location and Info Box background)
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(184, 21, 23, 27) // ~72% opacity dark charcoal
+        canvas.drawRoundRect(infoRect, cornerRadius, cornerRadius, paint)
+
+        // Draw Box 1 (Map Box with rounded corners)
+        val mapClipPath = Path().apply {
+            addRoundRect(mapRect, cornerRadius, cornerRadius, Path.Direction.CW)
         }
-        // A clear center pin, consistent with the selected GPS position.
-        val cx = mapRect.centerX(); val cy = mapRect.centerY()
-        paint.color = Color.RED
-        canvas.drawCircle(cx, cy, 7f * density * overlayScale, paint)
-        paint.color = Color.WHITE
-        paint.textSize = 13f * resources.displayMetrics.scaledDensity * overlayScale
-        paint.typeface = Typeface.DEFAULT_BOLD
-        canvas.drawText("OSM", mapRect.left + 8f * density * overlayScale, mapRect.bottom - 8f * density * overlayScale, paint)
+        canvas.save()
+        canvas.clipPath(mapClipPath)
+        if (mapSnapshot != null) {
+            canvas.drawBitmap(mapSnapshot!!, null, mapRect, paint)
+        } else {
+            paint.color = Color.rgb(33, 36, 41)
+            canvas.drawRect(mapRect, paint)
+        }
 
-        // Small product badge above the right-hand information box, as in the reference photo.
-        val badgeWidth = minOf(180f * density * overlayScale, textRect.width())
-        val badgeRect = RectF(textRect.right - badgeWidth, boxTop - badgeHeight, textRect.right, boxTop)
-        paint.color = Color.argb(190, 20, 20, 20)
-        canvas.drawRoundRect(badgeRect, 8f * density * overlayScale, 8f * density * overlayScale, paint)
-        paint.color = Color.WHITE
-        paint.typeface = Typeface.DEFAULT
-        paint.textSize = 12f * resources.displayMetrics.scaledDensity * overlayScale
-        canvas.drawText("📍 GPS Map Camera", badgeRect.left + 9f * density * overlayScale, badgeRect.centerY() + 4f * density * overlayScale, paint)
+        // Draw center red pin on Map Box
+        val pinCenterX = mapRect.centerX()
+        val pinCenterY = mapRect.centerY()
+        val pinHeight = mapSize * 0.22f
+        val pinWidth = pinHeight * 0.75f
+        val pinRadius = pinWidth / 2f
+        val pinTipY = pinCenterY + pinHeight * 0.40f
+        val headCenterY = pinTipY - pinHeight + pinRadius
 
-        var baseline = textRect.top + textPadding + stampFontSize * resources.displayMetrics.scaledDensity * overlayScale
-        lineItems.forEachIndexed { index, item ->
-            val (raw, size) = item
-            paint.color = stampFontColor
-            paint.textSize = size * resources.displayMetrics.scaledDensity * overlayScale
-            paint.typeface = if (index == 0) Typeface.create("sans-serif", Typeface.NORMAL) else Typeface.create("sans-serif", Typeface.NORMAL)
-            paint.setShadowLayer(1.5f * overlayScale, 0f, 0f, Color.argb(110, 0, 0, 0))
-            // Keep each field on its own line; ellipsize rather than wrapping into the next field.
-            var shown = raw
-            while (shown.isNotEmpty() && paint.measureText(shown) > contentWidth) shown = shown.dropLast(1)
-            if (shown != raw && shown.length > 3) shown = shown.dropLast(1) + "…"
-            canvas.drawText(shown, textRect.left + textPadding, baseline, paint)
-            baseline += paint.fontSpacing * 1.02f
-            paint.clearShadowLayer()
+        // Soft drop shadow beneath pin tip
+        paint.color = Color.argb(90, 0, 0, 0)
+        canvas.drawOval(
+            RectF(pinCenterX - pinRadius * 0.7f, pinTipY - pinRadius * 0.15f, pinCenterX + pinRadius * 0.7f, pinTipY + pinRadius * 0.35f),
+            paint
+        )
+
+        // Pin body
+        val pinPath = Path().apply {
+            moveTo(pinCenterX, pinTipY)
+            cubicTo(
+                pinCenterX + pinRadius * 0.9f, pinTipY - pinHeight * 0.35f,
+                pinCenterX + pinRadius, headCenterY + pinRadius * 0.5f,
+                pinCenterX + pinRadius, headCenterY
+            )
+            arcTo(
+                RectF(pinCenterX - pinRadius, headCenterY - pinRadius, pinCenterX + pinRadius, headCenterY + pinRadius),
+                0f, -180f, false
+            )
+            cubicTo(
+                pinCenterX - pinRadius, headCenterY + pinRadius * 0.5f,
+                pinCenterX - pinRadius * 0.9f, pinTipY - pinHeight * 0.35f,
+                pinCenterX, pinTipY
+            )
+            close()
+        }
+        paint.color = Color.rgb(234, 67, 53) // Google Maps Red
+        paint.style = Paint.Style.FILL
+        canvas.drawPath(pinPath, paint)
+
+        // Pin inner white dot
+        paint.color = Color.WHITE
+        canvas.drawCircle(pinCenterX, headCenterY, pinRadius * 0.42f, paint)
+
+        // Google watermark text at bottom-left of Map Box
+        paint.color = Color.WHITE
+        paint.textSize = mapSize * 0.13f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.setShadowLayer(3f, 1f, 1f, Color.argb(180, 0, 0, 0))
+        canvas.drawText(
+            "Google",
+            mapRect.left + mapSize * 0.08f,
+            mapRect.bottom - mapSize * 0.07f,
+            paint
+        )
+        paint.clearShadowLayer()
+        canvas.restore()
+
+        // Draw Floating Badge atop Box 2 (aligned to infoRect.right)
+        val badgeHeight = infoWidth * 0.14f
+        val badgePaddingX = badgeHeight * 0.36f
+        val badgeBottom = infoRect.top - h * 0.005f
+        val badgeTop = badgeBottom - badgeHeight
+
+        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = badgeHeight * 0.46f
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            color = Color.WHITE
+        }
+        val badgeText = "GPS Map Camera"
+        val badgeTextWidth = badgePaint.measureText(badgeText)
+        val iconSize = badgeHeight * 0.56f
+        val iconGap = badgeHeight * 0.22f
+        val badgeWidth = badgePaddingX * 2 + iconSize + iconGap + badgeTextWidth
+        val badgeLeft = infoRect.right - badgeWidth
+        val badgeRight = infoRect.right
+        val badgeRect = RectF(badgeLeft, badgeTop, badgeRight, badgeBottom)
+        val badgeRadius = badgeHeight * 0.28f
+
+        paint.color = Color.argb(205, 24, 26, 29)
+        canvas.drawRoundRect(badgeRect, badgeRadius, badgeRadius, paint)
+
+        // Badge Icon
+        val iconLeft = badgeRect.left + badgePaddingX
+        val iconTop = badgeRect.centerY() - iconSize / 2f
+        val iconRect = RectF(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+        paint.color = Color.rgb(52, 168, 83)
+        canvas.drawRoundRect(iconRect, iconSize * 0.22f, iconSize * 0.22f, paint)
+        paint.color = Color.rgb(251, 188, 4)
+        canvas.drawCircle(iconRect.centerX(), iconRect.centerY() - iconSize * 0.06f, iconSize * 0.24f, paint)
+        paint.color = Color.WHITE
+        canvas.drawCircle(iconRect.centerX(), iconRect.centerY() - iconSize * 0.06f, iconSize * 0.10f, paint)
+
+        val badgeTextBaseline = badgeRect.centerY() - (badgePaint.descent() + badgePaint.ascent()) / 2f
+        canvas.drawText(badgeText, iconLeft + iconSize + iconGap, badgeTextBaseline, badgePaint)
+
+        // Draw Text Lines in Box 2
+        var currentY = infoRect.top + padY + titleSize * 0.88f
+        for (i in linesToDraw.indices) {
+            val (text, p) = linesToDraw[i]
+            val truncated = ellipsizeText(text, p, contentWidth)
+            canvas.drawText(truncated, infoRect.left + padX, currentY, p)
+            if (i < linesToDraw.size - 1) {
+                val nextSize = linesToDraw[i + 1].second.textSize
+                currentY += nextSize + lineSpacing
+            }
         }
 
         val values = ContentValues().apply {

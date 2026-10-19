@@ -1,52 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/stampRoot" android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="vertical" android:background="#00141414">
-    <LinearLayout android:layout_width="wrap_content" android:layout_height="26dp"
-        android:layout_gravity="end" android:orientation="horizontal" android:gravity="center_vertical"
-        android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="3dp"
-        android:paddingBottom="3dp" android:background="#991A1A1A">
-        <ImageView android:layout_width="16dp" android:layout_height="16dp"
-            android:src="@android:drawable/ic_menu_camera" android:tint="#FFFFFF"
-            android:contentDescription="Camera map pin"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginStart="6dp" android:text="GPS Map Camera" android:textColor="#FFFFFF"
-            android:textSize="11sp" android:fontFamily="sans-serif"/>
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/stampRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="16dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:background="@android:color/transparent">
+
+    <!-- Top Badge floating directly above the Location Info Box -->
+    <LinearLayout
+        android:id="@+id/stampBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_stamp_badge"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="9dp"
+        android:paddingBottom="3dp">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:contentDescription="GPS Map Camera App Icon"
+            android:src="@drawable/ic_gps_badge_logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:fontFamily="sans-serif"
+            android:text="GPS Map Camera"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp" />
     </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:minHeight="145dp" android:orientation="horizontal" android:background="#88141414">
-        <FrameLayout android:layout_width="145dp" android:layout_height="145dp">
-            <ImageView android:id="@+id/stampMapImage" android:layout_width="match_parent"
-                android:layout_height="match_parent" android:scaleType="centerCrop"
-                android:contentDescription="Satellite map thumbnail"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_gravity="bottom|start" android:layout_marginStart="8dp"
-                android:layout_marginBottom="8dp" android:text="Google" android:textColor="#FFFFFF"
-                android:textSize="16sp" android:textStyle="bold"
-                android:shadowColor="#CC000000" android:shadowRadius="3"/>
-        </FrameLayout>
-        <LinearLayout android:layout_width="0dp" android:layout_weight="1"
-            android:layout_height="wrap_content" android:orientation="vertical"
-            android:paddingStart="12dp" android:paddingEnd="12dp"
-            android:paddingTop="8dp" android:paddingBottom="8dp">
-            <TextView android:id="@+id/stampTitle" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="City, State, Country 🇵🇰"
-                android:textColor="#FFFFFF" android:textSize="22sp" android:fontFamily="sans-serif"
-                android:shadowColor="#80000000" android:shadowRadius="2"/>
-            <TextView android:id="@+id/stampAddress" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                android:text="Plus code, street, city, state, country" android:textColor="#F5F5F5"
-                android:textSize="14sp" android:fontFamily="sans-serif"
-                android:shadowColor="#80000000" android:shadowRadius="2" android:maxLines="2"/>
-            <TextView android:id="@+id/stampCoordinates" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                android:text="Lat 0.000000° Long 0.00000°" android:textColor="#F5F5F5"
-                android:textSize="14sp" android:fontFamily="sans-serif"
-                android:shadowColor="#80000000" android:shadowRadius="2"/>
-            <TextView android:id="@+id/stampDateTime" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                android:text="Monday, 01/01/2026 12:00 PM GMT +05:00" android:textColor="#F5F5F5"
-                android:textSize="14sp" android:fontFamily="sans-serif"
-                android:shadowColor="#80000000" android:shadowRadius="2"/>
+
+    <!-- Bottom Row: Box 1 (Map) and Box 2 (Location Info), BOTTOM ALIGNED -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <!-- Box 1: Separate Map Box (Square with Rounded Corners) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/stampMapCard"
+            android:layout_width="122dp"
+            android:layout_height="122dp"
+            app:cardBackgroundColor="#212429"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:cardPreventCornerOverlap="false"
+            app:strokeWidth="0dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Satellite map thumbnail -->
+                <ImageView
+                    android:id="@+id/stampMapImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="Map satellite view"
+                    android:scaleType="centerCrop" />
+
+                <!-- Red Google Location Pin centered on map -->
+                <ImageView
+                    android:id="@+id/stampMapPin"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Location Pin"
+                    android:src="@drawable/ic_red_pin" />
+
+                <!-- Google watermark text at bottom-left -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|start"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginBottom="6dp"
+                    android:fontFamily="sans-serif-bold"
+                    android:shadowColor="#B3000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="3"
+                    android:text="Google"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Box 2: Separate Location and Info Box (Taller, Rounded Corners) -->
+        <LinearLayout
+            android:id="@+id/stampInfoBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stamp_box"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingTop="9dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="9dp">
+
+            <!-- Line 1: Main Title + Country Flag -->
+            <TextView
+                android:id="@+id/stampTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowRadius="2"
+                android:singleLine="true"
+                android:text="Pahore, Sindh, Pakistan 🇵🇰"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <!-- Line 2: Plus code + detailed address -->
+            <TextView
+                android:id="@+id/stampAddress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowRadius="2"
+                android:singleLine="true"
+                android:text="9g83+7r8 Abbas Khan, Pahore, Sindh , Pakistan"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp" />
+
+            <!-- Line 3: Latitude and Longitude -->
+            <TextView
+                android:id="@+id/stampCoordinates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowRadius="2"
+                android:singleLine="true"
+                android:text="Lat 25.366589° Long 68.505276°"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp" />
+
+            <!-- Line 4: Day, Date, Time and GMT -->
+            <TextView
+                android:id="@+id/stampDateTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowRadius="2"
+                android:singleLine="true"
+                android:text="Monday, 19/10/2026 11:48 AM GMT +05:00"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp" />
+
+            <!-- Line 5: Note -->
+            <TextView
+                android:id="@+id/stampNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowRadius="2"
+                android:singleLine="true"
+                android:text="Note : Captured by GPS Map Camera"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>
