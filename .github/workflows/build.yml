@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   build:
+    name: Build debug APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -21,16 +22,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Ensure Gradle wrapper uses 8.9
+      - name: Configure Gradle wrapper
         run: |
-          sed -i 's#gradle-[0-9.]*-\(bin\|all\)\.zip#gradle-8.9-all.zip#' gradle/wrapper/gradle-wrapper.properties
           chmod +x ./gradlew
+          grep -q 'gradle-8.9-' gradle/wrapper/gradle-wrapper.properties || \
+            sed -i 's#gradle-[0-9.]*-\(bin\|all\)\.zip#gradle-8.9-all.zip#' gradle/wrapper/gradle-wrapper.properties
 
-      - name: Verify Gradle version
-        run: ./gradlew --version
+      - name: Verify toolchain
+        run: |
+          java -version
+          ./gradlew --version
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon clean assembleDebug
+        run: ./gradlew --no-daemon clean assembleDebug --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

@@ -373,8 +373,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); mapView?.onResume() }
-            override fun onPause() { mapView?.onPause(); super.onPause() }
-    override fun onDestroy() { mapView?.onDestroy(); super.onDestroy() }
-    override fun onLowMemory() { super.onLowMemory(); mapView?.onLowMemory() }
+    override fun onResume() {
+        super.onResume()
+        mapView?.onResume()
+    }
+
+    override fun onPause() {
+        mapView?.onPause()
+        super.onPause()
+    }
+    override fun onDestroy() {
+        // osmdroid MapView does not provide Google Maps-style onDestroy().
+        mapView?.onDetach()
+        super.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+    }
 }
