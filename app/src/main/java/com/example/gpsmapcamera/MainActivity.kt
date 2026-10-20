@@ -29,7 +29,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.ITileSource
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -46,6 +49,36 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        /** A real, descriptive user agent. OSM tile servers reject generic / "com.example" ones. */
+        const val USER_AGENT = "GPSMapCamera/1.0 (Android app; https://github.com/gpsmapcamera/app)"
+
+        /** OpenStreetMap street tiles (needs the user agent above). */
+        val STREET_TILES: ITileSource = XYTileSource(
+            "OSM-Street", 0, 19, 256, ".png",
+            arrayOf(
+                "https://a.tile.openstreetmap.org/",
+                "https://b.tile.openstreetmap.org/",
+                "https://c.tile.openstreetmap.org/"
+            ),
+            "© OpenStreetMap contributors"
+        )
+
+        /** Esri World Imagery satellite tiles (no key needed, never shows "Access blocked"). */
+        val SATELLITE_TILES: ITileSource = object : OnlineTileSourceBase(
+            "Esri-Satellite", 0, 19, 256, ".jpg",
+            arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"),
+            "© Esri, Maxar, Earthstar Geographics"
+        ) {
+            override fun getTileURLString(pMapTileIndex: Long): String =
+                baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" +
+                    MapTileIndex.getY(pMapTileIndex) + "/" +
+                    MapTileIndex.getX(pMapTileIndex) + mImageFilenameEnding
+        }
+    }
+
+    private var satelliteMap = true
     private lateinit var photoPreview: ImageView
     private lateinit var emptyHint: TextView
     private lateinit var stampPreview: View
@@ -93,19 +126,30 @@ class MainActivity : AppCompatActivity() {
         photoPreview = findViewById(R.id.photoPreview)
         emptyHint = findViewById(R.id.emptyHint)
         stampPreview = findViewById(R.id.stampPreview)
-        findViewById<Button>(R.id.captureButton).setOnClickListener {
+        findViewById<View>(R.id.captureButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
             else cameraPermission.launch(Manifest.permission.CAMERA)
         }
-        findViewById<Button>(R.id.galleryButton).setOnClickListener { pickPhoto.launch("image/*") }
-        findViewById<Button>(R.id.configureButton).setOnClickListener { showOptions() }
+        findViewById<View>(R.id.galleryButton).setOnClickListener { pickPhoto.launch("image/*") }
+        findViewById<View>(R.id.configureButton).setOnClickListener { showOptions() }
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveStampedPhoto() }
-        Configuration.getInstance().userAgentValue = packageName
+        // IMPORTANT: OpenStreetMap blocks tile requests that identify themselves with a default /
+        // "com.example.*" user agent (that is what shows the "Access blocked" tile). Send a real one.
+        val osmConfig = Configuration.getInstance()
+        osmConfig.load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
+        osmConfig.userAgentValue = USER_AGENT
         val osmPath = File(cacheDir, "osmdroid")
-        Configuration.getInstance().osmdroidBasePath = osmPath
-        Configuration.getInstance().osmdroidTileCache = File(osmPath, "tiles")
+        osmConfig.osmdroidBasePath = osmPath
+        osmConfig.osmdroidTileCache = File(osmPath, "tiles")
+        osmConfig.tileDownloadThreads = 2
+        osmConfig.tileFileSystemThreads = 2
         buildStampText()
         fetchMapSnapshot(chosenLat, chosenLon)
+    }
+
+    private fun setConfigureEnabled(enabled: Boolean) {
+        findViewById<View>(R.id.configureButton).isEnabled = enabled
+        findViewById<View>(R.id.configureLabel).alpha = if (enabled) 1f else 0.45f
     }
 
     private fun launchCamera() {
@@ -125,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             photoPreview.setImageBitmap(photoBitmap)
             emptyHint.visibility = View.GONE
             stampPreview.visibility = View.VISIBLE
-            findViewById<Button>(R.id.configureButton).isEnabled = true
+            setConfigureEnabled(true)
             findViewById<Button>(R.id.saveButton).isEnabled = true
             updateStampViews()
             if (mapSnapshot == null) {
@@ -138,8 +182,11 @@ class MainActivity : AppCompatActivity() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_stamp_options, null)
         val mapWidget = dialogView.findViewById<MapView>(R.id.locationMap)
         mapView = mapWidget
-        mapWidget.setTileSource(TileSourceFactory.MAPNIK)
+        mapWidget.setTileSource(if (satelliteMap) SATELLITE_TILES else STREET_TILES)
         mapWidget.setMultiTouchControls(true)
+        mapWidget.setBuiltInZoomControls(false)
+        mapWidget.minZoomLevel = 3.0
+        mapWidget.maxZoomLevel = 19.0
         mapWidget.setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
         mapWidget.controller.setZoom(16.0)
         mapWidget.controller.setCenter(GeoPoint(chosenLat, chosenLon))
@@ -158,6 +205,20 @@ class MainActivity : AppCompatActivity() {
         }
         mapWidget.overlays.add(MapEventsOverlay(mapEvents))
         mapWidget.invalidate()
+
+        // Floating map controls: Street/Satellite toggle + zoom
+        val layerButton = dialogView.findViewById<View>(R.id.mapLayerButton)
+        val layerLabel = dialogView.findViewById<TextView>(R.id.mapLayerLabel)
+        fun refreshLayerLabel() { layerLabel.text = if (satelliteMap) "Satellite" else "Street" }
+        refreshLayerLabel()
+        layerButton.setOnClickListener {
+            satelliteMap = !satelliteMap
+            mapWidget.setTileSource(if (satelliteMap) SATELLITE_TILES else STREET_TILES)
+            refreshLayerLabel()
+            mapWidget.invalidate()
+        }
+        dialogView.findViewById<View>(R.id.mapZoomIn).setOnClickListener { mapWidget.controller.zoomIn() }
+        dialogView.findViewById<View>(R.id.mapZoomOut).setOnClickListener { mapWidget.controller.zoomOut() }
         val fontSizeControl = dialogView.findViewById<SeekBar>(R.id.stampFontSize)
         fontSizeControl.progress = (stampFontSize - 14f).toInt().coerceIn(0, 22)
         dialogView.findViewById<TextView>(R.id.fontSizeValue).text = "${stampFontSize.toInt()} sp"
@@ -202,7 +263,7 @@ class MainActivity : AppCompatActivity() {
         fun refreshDate() { dateSummary.text = formatDate(chosenDate.time) }
         refreshDate()
         locationSummary.text = "$currentAddress\nLat $chosenLat, Long $chosenLon"
-        dialogView.findViewById<Button>(R.id.searchPlaceButton).setOnClickListener {
+        dialogView.findViewById<View>(R.id.searchPlaceButton).setOnClickListener {
             val input = EditText(this).apply { hint = "Place or address"; setSingleLine() }
             AlertDialog.Builder(this).setTitle("Search address").setView(input)
                 .setNegativeButton("Cancel", null)
@@ -222,7 +283,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }.show()
         }
-        dialogView.findViewById<Button>(R.id.useGpsButton).setOnClickListener {
+        dialogView.findViewById<View>(R.id.useGpsButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 900)
             } else fetchGpsLocation()
@@ -309,7 +370,7 @@ class MainActivity : AppCompatActivity() {
     private fun httpGet(urlString: String): String {
         val conn = URL(urlString).openConnection() as HttpURLConnection
         try {
-            conn.setRequestProperty("User-Agent", "GPSMapCamera/1.0 (Android; dev@gpsmapcamera.local)")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.setRequestProperty("Accept-Language", Locale.getDefault().toLanguageTag())
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
@@ -749,7 +810,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val url = URL(urlString)
                 val conn = url.openConnection() as HttpURLConnection
-                conn.setRequestProperty("User-Agent", "GPSMapCamera/1.0 (Android; dev@gpsmapcamera.local)")
+                conn.setRequestProperty("User-Agent", USER_AGENT)
                 conn.connectTimeout = 3500
                 conn.readTimeout = 3500
                 if (conn.responseCode == 200) {

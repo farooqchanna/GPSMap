@@ -19,6 +19,7 @@ No `local.properties` API key entry is needed. Android Studio normally creates `
 - Save the stamped JPEG to `Pictures/GPSMapCamera`.
 
 ## Notes
+- **Map "Access blocked" fix:** OpenStreetMap blocks tile requests that use a default or `com.example.*` user agent. The app now sends a proper `USER_AGENT` (see `MainActivity.companion`) and defaults to Esri satellite tiles, with a Street/Satellite toggle on the map. If you publish the app, change `USER_AGENT` to your real app name and contact URL/email.
 - Google Maps SDK itself cannot be used without a Google Maps API key. This project avoids that requirement by using OpenStreetMap instead.
 - Map tiles and address search need an internet connection. Address search and reverse lookup use OpenStreetMap Nominatim, with Photon and Android's Geocoder as fallbacks, so they work on devices without Google services. Coordinates and plus codes are generated locally.
 - OpenStreetMap data attribution is included. Respect the OpenStreetMap tile usage policy; for high-volume production use, configure an appropriate tile provider.

@@ -78,7 +78,7 @@
         android:layout_marginStart="18dp"
         android:layout_marginEnd="18dp"
         android:layout_marginTop="2dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="14dp"
         android:background="@drawable/bg_preview_card">
 
         <ImageView
@@ -112,91 +112,131 @@
             android:textSize="15sp" />
     </FrameLayout>
 
-    <!-- ===================== Actions ===================== -->
+    <!-- ===================== Bottom action bar ===================== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp">
+        android:orientation="vertical"
+        android:background="@drawable/bg_bottom_bar"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="14dp">
+
+        <!-- Camera-app style row: Gallery | SHUTTER | Stamp settings -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Gallery (left thumb) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageButton
+                    android:id="@+id/galleryButton"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:background="@drawable/bg_round_icon"
+                    android:contentDescription="Choose from gallery"
+                    android:padding="16dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_action_gallery"
+                    android:tint="@color/btn_text_light" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Gallery"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Shutter (centre, biggest) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageButton
+                    android:id="@+id/captureButton"
+                    android:layout_width="82dp"
+                    android:layout_height="82dp"
+                    android:background="@drawable/bg_shutter"
+                    android:contentDescription="Take photo"
+                    android:padding="26dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_action_camera"
+                    android:tint="#FFFFFF" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Camera"
+                    android:textColor="@color/text_bright"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Stamp settings (right thumb) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageButton
+                    android:id="@+id/configureButton"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:background="@drawable/bg_round_icon"
+                    android:contentDescription="Configure stamp"
+                    android:enabled="false"
+                    android:padding="16dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_action_tune"
+                    android:tint="@color/btn_text_light" />
+
+                <TextView
+                    android:id="@+id/configureLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:alpha="0.45"
+                    android:text="Stamp"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/captureButton"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="54dp"
-            android:background="@drawable/bg_button_primary"
-            android:drawableStart="@drawable/ic_action_camera"
+            android:id="@+id/saveButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_button_save"
+            android:drawableStart="@drawable/ic_action_save"
             android:drawablePadding="10dp"
             android:gravity="center"
-            android:text="Camera"
-            android:textColor="@color/btn_text_light"
+            android:paddingStart="24dp"
+            android:paddingEnd="40dp"
+            android:text="Save Stamped Photo"
+            android:textColor="@color/btn_text_on_amber"
             android:textSize="15sp"
             android:textStyle="bold"
             android:letterSpacing="0.02"
             android:textAllCaps="false"
-            android:stateListAnimator="@null" />
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/galleryButton"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="54dp"
-            android:background="@drawable/bg_button_outline"
-            android:drawableStart="@drawable/ic_action_gallery"
-            android:drawablePadding="10dp"
-            android:gravity="center"
-            android:text="Gallery"
-            android:textColor="@color/btn_text_light"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.02"
-            android:textAllCaps="false"
-            android:stateListAnimator="@null" />
+            android:stateListAnimator="@null"
+            android:enabled="false" />
     </LinearLayout>
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/configureButton"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_button_tonal"
-        android:drawableStart="@drawable/ic_action_tune"
-        android:drawablePadding="10dp"
-        android:gravity="center"
-        android:text="Configure stamp"
-        android:textColor="@color/btn_text_light"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.02"
-        android:textAllCaps="false"
-        android:stateListAnimator="@null"
-        android:enabled="false" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/saveButton"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/bg_button_save"
-        android:drawableStart="@drawable/ic_action_save"
-        android:drawablePadding="10dp"
-        android:gravity="center"
-        android:text="Save Stamped Photo"
-        android:textColor="@color/btn_text_on_amber"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.02"
-        android:textAllCaps="false"
-        android:stateListAnimator="@null"
-        android:enabled="false" />
 </LinearLayout>

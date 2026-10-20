@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical">
+
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
     android:fillViewport="true"
     android:overScrollMode="ifContentScrolls">
 
@@ -20,62 +27,142 @@
             android:layout_height="wrap_content"
             android:text="LOCATION" />
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/searchPlaceButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_button_outline"
-            android:drawableStart="@drawable/ic_action_search"
-            android:drawablePadding="10dp"
-            android:gravity="center"
-            android:text="Search a place"
-            android:textColor="@color/btn_text_light"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textAllCaps="false"
-            android:stateListAnimator="@null" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Search a place, or tap the map to choose a location"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
-
+        <!-- Map with floating controls: search on top, GPS / zoom / layer on the right -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             app:cardBackgroundColor="#10141D"
-            app:cardCornerRadius="16dp"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/surface_stroke_soft"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:strokeColor="@color/surface_stroke_soft">
 
-            <org.osmdroid.views.MapView
-                android:id="@+id/locationMap"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="210dp" />
+                android:layout_height="300dp">
+
+                <org.osmdroid.views.MapView
+                    android:id="@+id/locationMap"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Search pill (top) -->
+                <LinearLayout
+                    android:id="@+id/searchPlaceButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_gravity="top"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_map_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_action_search"
+                        android:tint="@color/accent_blue_bright" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:text="Search a place or address"
+                        android:textColor="@color/text_muted"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Right-side control stack (thumb friendly) -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="12dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <ImageButton
+                        android:id="@+id/mapZoomIn"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_map_fab"
+                        android:contentDescription="Zoom in"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_action_add"
+                        android:tint="#FFFFFF" />
+
+                    <ImageButton
+                        android:id="@+id/mapZoomOut"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_map_fab"
+                        android:contentDescription="Zoom out"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_action_remove"
+                        android:tint="#FFFFFF" />
+
+                    <ImageButton
+                        android:id="@+id/useGpsButton"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_map_fab_primary"
+                        android:contentDescription="Use my current GPS location"
+                        android:padding="14dp"
+                        android:src="@drawable/ic_action_gps"
+                        android:tint="#FFFFFF" />
+                </LinearLayout>
+
+                <!-- Street / Satellite switch (bottom-left) -->
+                <LinearLayout
+                    android:id="@+id/mapLayerButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_gravity="bottom|start"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_map_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="16dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_action_layers"
+                        android:tint="#FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/mapLayerLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Satellite"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/useGpsButton"
+        <TextView
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_button_tonal"
-            android:drawableStart="@drawable/ic_action_gps"
-            android:drawablePadding="10dp"
-            android:gravity="center"
-            android:text="Use current GPS location"
-            android:textColor="@color/btn_text_light"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textAllCaps="false"
-            android:stateListAnimator="@null" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Tap the map to drop a pin, or use the blue button for your GPS"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/locationSummary"
@@ -113,7 +200,11 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="46dp"
-                android:background="@drawable/bg_button_outline"
+                android:background="@drawable/bg_chip_button"
+                android:drawableStart="@drawable/ic_action_calendar"
+                android:drawablePadding="8dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="Choose date"
                 android:textColor="@color/btn_text_light"
                 android:textSize="14sp"
@@ -129,7 +220,11 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="46dp"
-                android:background="@drawable/bg_button_outline"
+                android:background="@drawable/bg_chip_button"
+                android:drawableStart="@drawable/ic_action_clock"
+                android:drawablePadding="8dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="Choose time"
                 android:textColor="@color/btn_text_light"
                 android:textSize="14sp"
@@ -245,12 +340,20 @@
             android:textSize="14sp"
             android:checked="true" />
 
+    </LinearLayout>
+</ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#10141D"
+        android:padding="14dp">
+
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/applyOptionsButton"
             android:layout_width="match_parent"
             android:layout_height="54dp"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/bg_button_primary"
+                        android:background="@drawable/bg_button_primary"
             android:drawableStart="@drawable/ic_action_tune"
             android:drawablePadding="10dp"
             android:gravity="center"
@@ -261,4 +364,4 @@
             android:textAllCaps="false"
             android:stateListAnimator="@null" />
     </LinearLayout>
-</ScrollView>
+</LinearLayout>

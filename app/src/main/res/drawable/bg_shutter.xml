@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- outer white ring -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#00000000" />
+            <stroke android:width="4dp" android:color="#FFFFFF" />
+        </shape>
+    </item>
+    <!-- inner glowing blue disc -->
+    <item android:top="7dp" android:bottom="7dp" android:left="7dp" android:right="7dp">
+        <ripple android:color="#66FFFFFF">
+            <item>
+                <shape android:shape="oval">
+                    <gradient android:angle="315"
+                        android:startColor="#4FB2FF"
+                        android:endColor="#1967D2" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+</layer-list>
