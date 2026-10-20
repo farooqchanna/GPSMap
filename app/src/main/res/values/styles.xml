@@ -1,7 +1,59 @@
 <resources>
-    <style name="Theme.GpsMapCamera" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#1967D2</item>
-        <item name="colorPrimaryVariant">#174EA6</item>
+    <!-- Always-dark camera-app theme with Midnight Blue palette -->
+    <style name="Theme.GpsMapCamera" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="colorPrimaryVariant">@color/accent_blue_deep</item>
         <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">@color/accent_amber</item>
+        <item name="colorSecondaryVariant">@color/accent_amber_deep</item>
+        <item name="colorOnSecondary">@color/on_amber</item>
+        <item name="android:colorBackground">@color/bg_deep</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_bright</item>
+        <item name="colorOnError">#FF6E6E</item>
+        <item name="android:textColorPrimary">@color/text_bright</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+        <item name="android:colorControlActivated">@color/accent_blue</item>
+        <item name="android:colorControlNormal">#5A6478</item>
+        <item name="android:windowBackground">@drawable/bg_main_gradient</item>
+        <item name="android:statusBarColor">@color/bg_deep</item>
+        <item name="android:navigationBarColor">@color/bg_deep</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="alertDialogTheme">@style/Theme.GpsMapCamera.Alert</item>
+    </style>
+
+    <!-- Rounded dark alert dialogs with blue actions -->
+    <style name="Theme.GpsMapCamera.Alert" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog_window</item>
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="colorSecondary">@color/accent_amber</item>
+        <item name="android:textColorPrimary">@color/text_bright</item>
+        <item name="android:textColor">@color/text_bright</item>
+        <item name="android:colorControlActivated">@color/accent_blue</item>
+        <item name="colorControlNormal">#5A6478</item>
+    </style>
+
+    <!-- Section labels inside the options dialog -->
+    <style name="SectionLabel">
+        <item name="android:textColor">@color/accent_blue</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- Small muted field labels -->
+    <style name="FieldLabel">
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Rounded info/summary boxes -->
+    <style name="InfoBox">
+        <item name="android:background">@drawable/bg_info_box</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:textColor">@color/text_bright</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:lineSpacingExtra">3dp</item>
     </style>
 </resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Midnight Blue palette -->
+    <color name="bg_deep">#0B0D12</color>
+    <color name="bg_elevated">#141925</color>
+    <color name="surface_dark">#171B24</color>
+    <color name="surface_raised">#1C2230</color>
+    <color name="surface_stroke">#2A3245</color>
+    <color name="surface_stroke_soft">#232B3D</color>
+
+    <!-- Brand accents -->
+    <color name="accent_blue">#2D9CFF</color>
+    <color name="accent_blue_bright">#4FB2FF</color>
+    <color name="accent_blue_deep">#1967D2</color>
+    <color name="accent_amber">#FFB300</color>
+    <color name="accent_amber_deep">#FF8F00</color>
+    <color name="on_amber">#1A1200</color>
+
+    <!-- Text -->
+    <color name="text_bright">#F2F4F8</color>
+    <color name="text_muted">#9AA3B2</color>
+    <color name="text_faint">#8B94A7</color>
+    <color name="text_disabled">#5F6B80</color>
+
+    <!-- Button disabled fill -->
+    <color name="btn_disabled_fill">#232833</color>
+</resources>

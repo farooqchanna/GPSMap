@@ -1,34 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="16dp" android:gravity="center_horizontal"
-    android:background="#101114">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="GPS Map Camera" android:textColor="#FFFFFF" android:textSize="26sp"
-        android:textStyle="bold" android:layout_marginBottom="16dp"/>
-    <FrameLayout android:id="@+id/previewContainer" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:background="#24262B">
-        <ImageView android:id="@+id/photoPreview" android:layout_width="match_parent"
-            android:layout_height="match_parent" android:scaleType="fitCenter"
-            android:contentDescription="Selected photo preview"/>
-        <include android:id="@+id/stampPreview" layout="@layout/stamp_overlay"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:visibility="gone"/>
-        <TextView android:id="@+id/emptyHint" android:layout_width="match_parent"
-            android:layout_height="match_parent" android:gravity="center"
-            android:text="Capture or choose a photo to begin" android:textColor="#BFC3CA"
-            android:textSize="16sp"/>
-    </FrameLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center" android:layout_marginTop="16dp">
-        <Button android:id="@+id/captureButton" android:layout_width="0dp"
-            android:layout_weight="1" android:layout_height="wrap_content" android:text="Camera"/>
-        <Space android:layout_width="8dp" android:layout_height="1dp"/>
-        <Button android:id="@+id/galleryButton" android:layout_width="0dp"
-            android:layout_weight="1" android:layout_height="wrap_content" android:text="Gallery"/>
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <!-- ===================== Header ===================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp">
+
+        <FrameLayout
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_logo_ring">
+
+            <!-- Existing app lens logo (unchanged asset) -->
+            <ImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_gps_camera_lens_logo" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/text_bright"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.01" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="Geotag your photos with a map stamp"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chip"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="v1.0"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp"
+            android:textStyle="bold" />
     </LinearLayout>
-    <Button android:id="@+id/configureButton" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Configure stamp" android:enabled="false"/>
-    <Button android:id="@+id/saveButton" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Save Stamped Photo" android:enabled="false"/>
+
+    <!-- ===================== Photo preview card ===================== -->
+    <FrameLayout
+        android:id="@+id/previewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_preview_card">
+
+        <ImageView
+            android:id="@+id/photoPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="2dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="Selected photo preview" />
+
+        <include
+            android:id="@+id/stampPreview"
+            layout="@layout/stamp_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/emptyHint"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:drawableTop="@drawable/ic_empty_state"
+            android:drawablePadding="18dp"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:lineSpacingExtra="4dp"
+            android:text="No photo yet\nCapture or choose a photo to begin"
+            android:textColor="@color/text_faint"
+            android:textSize="15sp" />
+    </FrameLayout>
+
+    <!-- ===================== Actions ===================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/captureButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="54dp"
+            android:background="@drawable/bg_button_primary"
+            android:drawableStart="@drawable/ic_action_camera"
+            android:drawablePadding="10dp"
+            android:gravity="center"
+            android:text="Camera"
+            android:textColor="@color/btn_text_light"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02"
+            android:textAllCaps="false"
+            android:stateListAnimator="@null" />
+
+        <Space
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/galleryButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="54dp"
+            android:background="@drawable/bg_button_outline"
+            android:drawableStart="@drawable/ic_action_gallery"
+            android:drawablePadding="10dp"
+            android:gravity="center"
+            android:text="Gallery"
+            android:textColor="@color/btn_text_light"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02"
+            android:textAllCaps="false"
+            android:stateListAnimator="@null" />
+    </LinearLayout>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/configureButton"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_button_tonal"
+        android:drawableStart="@drawable/ic_action_tune"
+        android:drawablePadding="10dp"
+        android:gravity="center"
+        android:text="Configure stamp"
+        android:textColor="@color/btn_text_light"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:textAllCaps="false"
+        android:stateListAnimator="@null"
+        android:enabled="false" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/saveButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_button_save"
+        android:drawableStart="@drawable/ic_action_save"
+        android:drawablePadding="10dp"
+        android:gravity="center"
+        android:text="Save Stamped Photo"
+        android:textColor="@color/btn_text_on_amber"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:textAllCaps="false"
+        android:stateListAnimator="@null"
+        android:enabled="false" />
 </LinearLayout>
