@@ -16,8 +16,8 @@
     <!-- Box 1: Separate Map Box (Square with Rounded Corners, Bottom-Aligned) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/stampMapCard"
-        android:layout_width="122dp"
-        android:layout_height="122dp"
+        android:layout_width="94dp"
+        android:layout_height="94dp"
         android:layout_gravity="bottom"
         app:cardBackgroundColor="#212429"
         app:cardCornerRadius="14dp"

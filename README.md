@@ -18,6 +18,12 @@ No `local.properties` API key entry is needed. Android Studio normally creates `
 - Stamp location/address, coordinates, plus code, and selected date/time onto the photo.
 - Save the stamped JPEG to `Pictures/GPSMapCamera`.
 
+## Pick a location with Google Maps (no API key, no billing)
+1. In the stamp options tap **Search in Google Maps** (opens the Google Maps app).
+2. Search a place, tap **Share**, then choose **GPS Map Camera**.
+3. The app reads the shared link, sets the location and address, and returns to the options screen.
+Alternative: copy the link in Google Maps, then tap **Paste copied Google Maps link**.
+
 ## Notes
 - **Map "Access blocked" fix:** OpenStreetMap blocks tile requests that use a default or `com.example.*` user agent. The app now sends a proper `USER_AGENT` (see `MainActivity.companion`) and defaults to Esri satellite tiles, with a Street/Satellite toggle on the map. If you publish the app, change `USER_AGENT` to your real app name and contact URL/email.
 - Google Maps SDK itself cannot be used without a Google Maps API key. This project avoids that requirement by using OpenStreetMap instead.

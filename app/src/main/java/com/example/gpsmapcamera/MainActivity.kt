@@ -4,7 +4,11 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.ActivityNotFoundException
+import android.content.ClipboardManager
 import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.location.Address
@@ -27,6 +31,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.Job
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLDecoder
 import java.net.URLEncoder
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.ITileSource
@@ -100,9 +105,9 @@ class MainActivity : AppCompatActivity() {
     private var stampAddress = ""
     private var stampCoords = ""
     private var stampDate = ""
-    private var stampFontSize = 18f
+    private var stampFontSize = 14f
     private var stampFontColor = Color.WHITE
-    private var stampMapSizeDp = 122f
+    private var stampMapSizeDp = 94f
     private var showAddressLine = true
     private var showCoordinates = true
     private var showDateTime = true
@@ -145,6 +150,14 @@ class MainActivity : AppCompatActivity() {
         osmConfig.tileFileSystemThreads = 2
         buildStampText()
         fetchMapSnapshot(chosenLat, chosenLon)
+        handleIncomingIntent(intent)
+    }
+
+    // A place shared from Google Maps (Share -> GPS Map Camera) arrives here while the app is open.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
     }
 
     private fun setConfigureEnabled(enabled: Boolean) {
@@ -283,6 +296,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }.show()
         }
+        dialogView.findViewById<View>(R.id.openGoogleMapsButton).setOnClickListener { openGoogleMaps() }
+        dialogView.findViewById<View>(R.id.pasteLinkButton).setOnClickListener { pasteLocationFromClipboard() }
         dialogView.findViewById<View>(R.id.useGpsButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 900)
@@ -363,6 +378,143 @@ class MainActivity : AppCompatActivity() {
             buildStampText()
             updateStampViews()
         }
+    }
+
+    // ---------- Google Maps link import (no API key, no billing) ----------
+
+    /** Opens the Google Maps app (or the website if the app is missing) so the person can search there. */
+    private fun openGoogleMaps() {
+        toast("Search a place in Google Maps, tap Share, then choose GPS Map Camera.")
+        val geo = Uri.parse("geo:$chosenLat,$chosenLon?z=15")
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps"))
+        } catch (_: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/@$chosenLat,$chosenLon,15z")))
+            } catch (_: ActivityNotFoundException) {
+                toast("No Google Maps app or browser found on this phone.")
+            }
+        }
+    }
+
+    private fun pasteLocationFromClipboard() {
+        val clip = (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip
+        val text = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(this)?.toString() else null
+        if (text.isNullOrBlank()) {
+            toast("Nothing copied yet. In Google Maps open a place, tap Share > Copy, then come back and tap Paste.")
+        } else importLocationFromText(text)
+    }
+
+    private fun handleIncomingIntent(i: Intent?) {
+        if (i == null) return
+        val text = when (i.action) {
+            Intent.ACTION_SEND -> i.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_VIEW -> i.dataString
+            else -> null
+        }
+        if (text.isNullOrBlank()) return
+        intent = Intent() // consume it so a screen rotation does not import it again
+        importLocationFromText(text)
+    }
+
+    private fun importLocationFromText(raw: String) {
+        toast("Reading location from Google Maps…")
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try { resolveSharedLocation(raw) } catch (_: Exception) { null }
+            }
+            if (result == null) {
+                toast("Could not find a location in that link. In Google Maps open a place, tap Share, then choose GPS Map Camera.")
+                return@launch
+            }
+            setLocation(result.first, result.second)
+            toast("Location set from Google Maps")
+            if (optionsDialog?.isShowing != true) showOptions()
+        }
+    }
+
+    private fun validLatLon(lat: Double, lon: Double) = lat in -90.0..90.0 && lon in -180.0..180.0 && !(lat == 0.0 && lon == 0.0)
+
+    /** Finds coordinates inside a Google Maps link / shared text. [allowPlain] also accepts "25.36, 68.50". */
+    private fun parseLatLon(text: String, allowPlain: Boolean): Pair<Double, Double>? {
+        val num = "(-?\\d{1,3}\\.\\d+)"
+        val patterns = mutableListOf(
+            "!3d$num!4d$num",                               // exact place pin inside long Google links
+            "@$num,\\s*$num",                               // map centre in the address bar
+            "[?&](?:q|query|ll|center|destination|daddr)=$num(?:,|%2C)\\s*$num",
+            "geo:$num,$num"
+        )
+        if (allowPlain) patterns.add("$num\\s*,\\s*$num")
+        for (pattern in patterns) {
+            val m = Regex(pattern).find(text) ?: continue
+            val lat = m.groupValues[1].toDoubleOrNull() ?: continue
+            val lon = m.groupValues[2].toDoubleOrNull() ?: continue
+            if (validLatLon(lat, lon)) return lat to lon
+        }
+        return null
+    }
+
+    /** Follows short links (maps.app.goo.gl ...) and returns every URL on the way, plus the final page text. */
+    private fun followLink(start: String): Pair<List<String>, String> {
+        val urls = mutableListOf<String>()
+        var current = start
+        var body = ""
+        for (hop in 0 until 8) {
+            urls.add(current)
+            runCatching { urls.add(URLDecoder.decode(current, "UTF-8")) }
+            val conn = URL(current).openConnection() as HttpURLConnection
+            try {
+                conn.instanceFollowRedirects = false
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+                conn.setRequestProperty("Accept-Language", "en")
+                conn.connectTimeout = 7000
+                conn.readTimeout = 7000
+                val code = conn.responseCode
+                val location = conn.getHeaderField("Location")
+                if (code in 300..399 && !location.isNullOrBlank()) {
+                    current = URL(URL(current), location).toString()
+                    continue
+                }
+                if (code == 200) {
+                    val sb = StringBuilder()
+                    conn.inputStream.bufferedReader().use { r ->
+                        val buf = CharArray(8192)
+                        while (sb.length < 300_000) { val n = r.read(buf); if (n < 0) break; sb.append(buf, 0, n) }
+                    }
+                    body = sb.toString()
+                }
+                break
+            } finally { conn.disconnect() }
+        }
+        return urls to body
+    }
+
+    private fun resolveSharedLocation(raw: String): Pair<Double, Double>? {
+        // 1) coordinates written directly in the text / link
+        parseLatLon(raw, allowPlain = true)?.let { return it }
+
+        val link = Regex("https?://\\S+").find(raw)?.value?.trimEnd('.', ',', ')', ']', '>')
+        val nameCandidates = mutableListOf<String>()
+        if (link != null) {
+            // 2) open the short link and look for coordinates in every redirect + the page itself
+            val (urls, body) = try { followLink(link) } catch (_: Exception) { emptyList<String>() to "" }
+            for (u in urls) parseLatLon(u, allowPlain = false)?.let { return it }
+            if (body.isNotEmpty()) parseLatLon(body, allowPlain = false)?.let { return it }
+            // 3) fall back to the place name inside the link: /maps/place/Some+Place/
+            for (u in urls) {
+                Regex("/maps/(?:place|search)/([^/@?]+)").find(u)?.groupValues?.get(1)?.let {
+                    runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()?.takeIf { n -> n.isNotBlank() }?.let { n -> nameCandidates.add(n) }
+                }
+            }
+        }
+        // 4) Google Maps also puts the place name / address above the link in the shared text
+        raw.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("http") }.take(2).forEach { nameCandidates.add(it) }
+
+        for (name in nameCandidates.distinct()) {
+            val hit = searchPlaces(name)?.firstOrNull()
+            if (hit != null) return hit.lat to hit.lon
+        }
+        return null
     }
 
     // ---------- Geocoding: OpenStreetMap Nominatim -> Photon -> Android Geocoder (fallbacks) ----------
