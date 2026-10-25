@@ -226,28 +226,28 @@ class MainActivity : AppCompatActivity() {
     private fun showOptions() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_stamp_options, null)
 
-        // Setup dialog tabs: Stamp Style | Location | Date & Details
+        // Setup dialog tabs: Location (default) | Stamp Style | Date & Details
         val dialogTabLayout = dialogView.findViewById<TabLayout>(R.id.dialogTabLayout)
-        val tabContentStyle = dialogView.findViewById<View>(R.id.tabContentStyle)
         val tabContentLocation = dialogView.findViewById<View>(R.id.tabContentLocation)
+        val tabContentStyle = dialogView.findViewById<View>(R.id.tabContentStyle)
         val tabContentDetails = dialogView.findViewById<View>(R.id.tabContentDetails)
 
         dialogTabLayout?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 when (tab?.position) {
                     0 -> {
-                        tabContentStyle?.visibility = View.VISIBLE
-                        tabContentLocation?.visibility = View.GONE
+                        tabContentLocation?.visibility = View.VISIBLE
+                        tabContentStyle?.visibility = View.GONE
                         tabContentDetails?.visibility = View.GONE
                     }
                     1 -> {
-                        tabContentStyle?.visibility = View.GONE
-                        tabContentLocation?.visibility = View.VISIBLE
+                        tabContentLocation?.visibility = View.GONE
+                        tabContentStyle?.visibility = View.VISIBLE
                         tabContentDetails?.visibility = View.GONE
                     }
                     2 -> {
-                        tabContentStyle?.visibility = View.GONE
                         tabContentLocation?.visibility = View.GONE
+                        tabContentStyle?.visibility = View.GONE
                         tabContentDetails?.visibility = View.VISIBLE
                     }
                 }
@@ -255,6 +255,15 @@ class MainActivity : AppCompatActivity() {
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+
+        // Ensure Location tab is always selected by default
+        dialogTabLayout?.getTabAt(0)?.select()
+        dialogTabLayout?.post {
+            dialogTabLayout.getTabAt(0)?.select()
+        }
+        tabContentLocation?.visibility = View.VISIBLE
+        tabContentStyle?.visibility = View.GONE
+        tabContentDetails?.visibility = View.GONE
 
         // Setup style selection cards inside dialog
         val cardStyle1 = dialogView.findViewById<View>(R.id.cardStyle1)
@@ -509,6 +518,13 @@ class MainActivity : AppCompatActivity() {
         importLocationFromText(text)
     }
 
+    private data class GoogleLocationResult(
+        val lat: Double,
+        val lon: Double,
+        val placeName: String? = null,
+        val addressDetail: String? = null
+    )
+
     private fun importLocationFromText(raw: String) {
         toast("Reading location from Google Maps…")
         lifecycleScope.launch {
@@ -519,9 +535,48 @@ class MainActivity : AppCompatActivity() {
                 toast("Could not find a location in that link. In Google Maps open a place, tap Share, then choose GPS Map Camera.")
                 return@launch
             }
-            setLocation(result.first, result.second)
-            toast("Location set from Google Maps")
+            setLocationFromGoogle(result)
+            val displayName = result.placeName ?: String.format(Locale.US, "%.5f, %.5f", result.lat, result.lon)
+            toast("Location set: $displayName")
             if (optionsDialog?.isShowing != true) showOptions()
+        }
+    }
+
+    private fun setLocationFromGoogle(result: GoogleLocationResult) {
+        val lat = result.lat
+        val lon = result.lon
+        chosenLat = lat
+        chosenLon = lon
+
+        mapView?.let {
+            it.controller.animateTo(GeoPoint(lat, lon))
+            addMapMarker(it, lat, lon)
+        }
+        fetchMapSnapshot(lat, lon)
+
+        // Cancel any pending OSM reverse geocode so OpenStreetMap never overwrites the Google Maps place name
+        geocodeJob?.cancel()
+
+        val googleTitle = result.placeName?.takeIf { it.isNotBlank() }
+        val googleAddress = result.addressDetail?.takeIf { it.isNotBlank() }
+
+        if (googleTitle != null) {
+            currentAddress = googleTitle
+            addressLine = googleAddress ?: googleTitle
+            optionsDialog?.findViewById<TextView>(R.id.locationSummary)?.text = "$currentAddress\nLat $lat, Long $lon"
+            buildStampText()
+            updateStampViews()
+        } else {
+            // Only if Google Maps link contained no place name at all, fall back to OSM reverse geocoding
+            optionsDialog?.findViewById<TextView>(R.id.locationSummary)?.text = "Finding address…\nLat $lat, Long $lon"
+            geocodeJob = lifecycleScope.launch {
+                val data = withContext(Dispatchers.IO) { reverseGeocode(lat, lon) }
+                currentAddress = data.first
+                addressLine = data.second
+                optionsDialog?.findViewById<TextView>(R.id.locationSummary)?.text = "$currentAddress\nLat $lat, Long $lon"
+                buildStampText()
+                updateStampViews()
+            }
         }
     }
 
@@ -581,32 +636,112 @@ class MainActivity : AppCompatActivity() {
         return urls to body
     }
 
-    private fun resolveSharedLocation(raw: String): Pair<Double, Double>? {
-        // 1) coordinates written directly in the text / link
-        parseLatLon(raw, allowPlain = true)?.let { return it }
+    /** Extracts the exact place name and address from Google Maps shared text, URL redirect path, or webpage title. */
+    private fun extractGooglePlaceInfo(
+        raw: String,
+        urls: List<String>,
+        body: String
+    ): Pair<String?, String?> {
+        // 1. Check shared raw text for lines before/after the URL (e.g. "Qadir Avenue\nHyderabad, Sindh, Pakistan\nhttps://...")
+        val rawLines = raw.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
 
-        val link = Regex("https?://\\S+").find(raw)?.value?.trimEnd('.', ',', ')', ']', '>')
-        val nameCandidates = mutableListOf<String>()
-        if (link != null) {
-            // 2) open the short link and look for coordinates in every redirect + the page itself
-            val (urls, body) = try { followLink(link) } catch (_: Exception) { emptyList<String>() to "" }
-            for (u in urls) parseLatLon(u, allowPlain = false)?.let { return it }
-            if (body.isNotEmpty()) parseLatLon(body, allowPlain = false)?.let { return it }
-            // 3) fall back to the place name inside the link: /maps/place/Some+Place/
-            for (u in urls) {
-                Regex("/maps/(?:place|search)/([^/@?]+)").find(u)?.groupValues?.get(1)?.let {
-                    runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull()?.takeIf { n -> n.isNotBlank() }?.let { n -> nameCandidates.add(n) }
+        if (rawLines.isNotEmpty()) {
+            val titleCandidate = rawLines[0]
+            val addressCandidate = if (rawLines.size > 1) rawLines.joinToString(", ") else rawLines[0]
+            if (titleCandidate.isNotBlank() && !titleCandidate.contains("google.com/maps", ignoreCase = true)) {
+                val fullAddress = if (rawLines.size > 1) {
+                    val combined = rawLines.joinToString(", ")
+                    combined
+                } else titleCandidate
+                return Pair(fullAddress, addressCandidate)
+            }
+        }
+
+        // 2. Extract from redirect URLs: /maps/place/Some+Place+Name/
+        for (u in urls) {
+            val placeMatch = Regex("/maps/place/([^/@?]+)").find(u)?.groupValues?.get(1)
+            if (!placeMatch.isNullOrBlank()) {
+                val decoded = runCatching { URLDecoder.decode(placeMatch, "UTF-8") }
+                    .getOrNull()?.replace('+', ' ')?.trim()
+                if (!decoded.isNullOrBlank() && !decoded.contains("http", ignoreCase = true)) {
+                    return Pair(decoded, decoded)
+                }
+            }
+
+            // Also check /maps/search/Query+Name/
+            val searchMatch = Regex("/maps/search/([^/@?]+)").find(u)?.groupValues?.get(1)
+            if (!searchMatch.isNullOrBlank()) {
+                val decoded = runCatching { URLDecoder.decode(searchMatch, "UTF-8") }
+                    .getOrNull()?.replace('+', ' ')?.trim()
+                if (!decoded.isNullOrBlank() && !decoded.contains("http", ignoreCase = true)) {
+                    return Pair(decoded, decoded)
                 }
             }
         }
-        // 4) Google Maps also puts the place name / address above the link in the shared text
-        raw.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("http") }.take(2).forEach { nameCandidates.add(it) }
 
-        for (name in nameCandidates.distinct()) {
-            val hit = searchPlaces(name)?.firstOrNull()
-            if (hit != null) return hit.lat to hit.lon
+        // 3. Extract from HTML body: <meta property="og:title" content="..."> or <title>
+        if (body.isNotEmpty()) {
+            val ogTitle = Regex("""<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(body)?.groupValues?.get(1)
+                ?: Regex("""<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']""", RegexOption.IGNORE_CASE).find(body)?.groupValues?.get(1)
+                ?: Regex("""<title>([^<]+)</title>""", RegexOption.IGNORE_CASE).find(body)?.groupValues?.get(1)
+
+            if (!ogTitle.isNullOrBlank()) {
+                val clean = ogTitle
+                    .replace(" - Google Maps", "", ignoreCase = true)
+                    .replace(" · Google Maps", "", ignoreCase = true)
+                    .replace(" | Google Maps", "", ignoreCase = true)
+                    .replace("·", ",")
+                    .trim()
+                if (clean.isNotBlank() && !clean.equals("Google Maps", ignoreCase = true)) {
+                    return Pair(clean, clean)
+                }
+            }
         }
-        return null
+
+        return Pair(null, null)
+    }
+
+    private fun resolveSharedLocation(raw: String): GoogleLocationResult? {
+        val link = Regex("https?://\\S+").find(raw)?.value?.trimEnd('.', ',', ')', ']', '>')
+        var latLon: Pair<Double, Double>? = null
+        val (urls, body) = if (link != null) {
+            try { followLink(link) } catch (_: Exception) { emptyList<String>() to "" }
+        } else {
+            emptyList<String>() to ""
+        }
+
+        // 1. Coordinates from redirect URLs
+        for (u in urls) {
+            if (latLon == null) latLon = parseLatLon(u, allowPlain = false)
+        }
+        // 2. Coordinates from webpage body
+        if (latLon == null && body.isNotEmpty()) {
+            latLon = parseLatLon(body, allowPlain = false)
+        }
+        // 3. Coordinates written directly in shared text
+        if (latLon == null) {
+            latLon = parseLatLon(raw, allowPlain = true)
+        }
+
+        // 4. Extract exact place name and address from Google Maps
+        val (placeName, addressDetail) = extractGooglePlaceInfo(raw, urls, body)
+
+        // 5. If coordinates still not found, search OSM using the Google place name
+        if (latLon == null) {
+            val searchQueries = listOfNotNull(placeName, addressDetail).distinct()
+            for (query in searchQueries) {
+                val hit = searchPlaces(query)?.firstOrNull()
+                if (hit != null) {
+                    latLon = hit.lat to hit.lon
+                    break
+                }
+            }
+        }
+
+        if (latLon == null) return null
+        return GoogleLocationResult(latLon.first, latLon.second, placeName, addressDetail)
     }
 
     // ---------- Geocoding: OpenStreetMap Nominatim -> Photon -> Android Geocoder (fallbacks) ----------
@@ -702,9 +837,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildStampText() {
+        val hasFlag = currentAddress.any { Character.isSurrogate(it) }
         val parts = currentAddress.split(",").map { it.trim() }
         val country = parts.lastOrNull().orEmpty()
-        val flag = countryFlag(country)
+        val flag = if (!hasFlag) countryFlag(country) else ""
         stampTitle = if (flag.isNotEmpty()) "$currentAddress $flag" else currentAddress
 
         val plus = try {
@@ -727,11 +863,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun countryFlag(country: String): String {
         val code = when (country.lowercase(Locale.ROOT)) {
-            "pakistan" -> "PK"; "india" -> "IN"; "united states", "united states of america" -> "US"
-            "united kingdom" -> "GB"; "canada" -> "CA"; "australia" -> "AU"; "united arab emirates" -> "AE"
-            "saudi arabia" -> "SA"; "bangladesh" -> "BD"; "nepal" -> "NP"; "china" -> "CN"
-            "japan" -> "JP"; "germany" -> "DE"; "france" -> "FR"; "turkey", "türkiye" -> "TR"
-            "sri lanka" -> "LK"; "afghanistan" -> "AF"; "iran" -> "IR"; "indonesia" -> "ID"
+            "pakistan", "sindh", "punjab", "balochistan", "kpk", "khyber pakhtunkhwa", "hyderabad", "karachi", "lahore" -> "PK"
+            "india" -> "IN"
+            "united states", "united states of america", "usa" -> "US"
+            "united kingdom", "uk" -> "GB"
+            "canada" -> "CA"
+            "australia" -> "AU"
+            "united arab emirates", "uae", "dubai" -> "AE"
+            "saudi arabia" -> "SA"
+            "bangladesh" -> "BD"
+            "nepal" -> "NP"
+            "china" -> "CN"
+            "japan" -> "JP"
+            "germany" -> "DE"
+            "france" -> "FR"
+            "turkey", "türkiye" -> "TR"
+            "sri lanka" -> "LK"
+            "afghanistan" -> "AF"
+            "iran" -> "IR"
+            "indonesia" -> "ID"
             else -> ""
         }
         return if (code.isEmpty()) "" else code.map { Character.toChars(0x1F1E6 + it.code - 'A'.code).concatToString() }.joinToString("")
