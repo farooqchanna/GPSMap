@@ -5,6 +5,29 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <!-- ============ Dialog Tabs ============ -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/dialogTabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#141925"
+        app:tabIndicatorColor="@color/accent_blue"
+        app:tabIndicatorHeight="3dp"
+        app:tabSelectedTextColor="@color/accent_blue_bright"
+        app:tabTextColor="@color/text_muted"
+        app:tabMode="fixed"
+        app:tabGravity="fill">
+
+        <com.google.android.material.tabs.TabItem
+            android:text="Stamp Style" />
+
+        <com.google.android.material.tabs.TabItem
+            android:text="Location" />
+
+        <com.google.android.material.tabs.TabItem
+            android:text="Date &amp; Details" />
+    </com.google.android.material.tabs.TabLayout>
+
 <ScrollView
     android:layout_width="match_parent"
     android:layout_height="0dp"
@@ -18,372 +41,671 @@
         android:orientation="vertical"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="10dp"
+        android:paddingTop="12dp"
         android:paddingBottom="14dp">
 
-        <!-- ============ Location ============ -->
-        <TextView style="@style/SectionLabel"
+        <!-- ==================== TAB 1: STAMP STYLE ==================== -->
+        <LinearLayout
+            android:id="@+id/tabContentStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="LOCATION" />
+            android:orientation="vertical"
+            android:visibility="visible">
 
-        <!-- Map with floating controls: search on top, GPS / zoom / layer on the right -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardBackgroundColor="#10141D"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/surface_stroke_soft">
-
-            <FrameLayout
+            <TextView style="@style/SectionLabel"
                 android:layout_width="match_parent"
-                android:layout_height="300dp">
+                android:layout_height="wrap_content"
+                android:text="SELECT STAMP TEMPLATE" />
 
-                <org.osmdroid.views.MapView
-                    android:id="@+id/locationMap"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Select the stamp style you want to place on your photo"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
 
-                <!-- Search pill (top) -->
+            <!-- Option 1: Style 1 - Floating Dual Box -->
+            <FrameLayout
+                android:id="@+id/cardStyle1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/bg_card_style_selected"
+                android:padding="14dp">
+
                 <LinearLayout
-                    android:id="@+id/searchPlaceButton"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_gravity="top"
-                    android:layout_margin="12dp"
-                    android:background="@drawable/bg_map_pill"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/ic_action_search"
-                        android:tint="@color/accent_blue_bright" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="12dp"
-                        android:text="Search a place or address"
-                        android:textColor="@color/text_muted"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Right-side control stack (thumb friendly) -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|end"
-                    android:layout_margin="12dp"
-                    android:gravity="center_horizontal"
                     android:orientation="vertical">
 
-                    <ImageButton
-                        android:id="@+id/mapZoomIn"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        android:background="@drawable/bg_map_fab"
-                        android:contentDescription="Zoom in"
-                        android:padding="11dp"
-                        android:src="@drawable/ic_action_add"
-                        android:tint="#FFFFFF" />
-
-                    <ImageButton
-                        android:id="@+id/mapZoomOut"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_map_fab"
-                        android:contentDescription="Zoom out"
-                        android:padding="11dp"
-                        android:src="@drawable/ic_action_remove"
-                        android:tint="#FFFFFF" />
-
-                    <ImageButton
-                        android:id="@+id/useGpsButton"
-                        android:layout_width="54dp"
-                        android:layout_height="54dp"
-                        android:layout_marginTop="14dp"
-                        android:background="@drawable/bg_map_fab_primary"
-                        android:contentDescription="Use my current GPS location"
-                        android:padding="14dp"
-                        android:src="@drawable/ic_action_gps"
-                        android:tint="#FFFFFF" />
-                </LinearLayout>
-
-                <!-- Street / Satellite switch (bottom-left) -->
-                <LinearLayout
-                    android:id="@+id/mapLayerButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="42dp"
-                    android:layout_gravity="bottom|start"
-                    android:layout_margin="12dp"
-                    android:background="@drawable/bg_map_pill"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="16dp">
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/ic_action_layers"
-                        android:tint="#FFFFFF" />
-
-                    <TextView
-                        android:id="@+id/mapLayerLabel"
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="Satellite"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <RadioButton
+                            android:id="@+id/radioStyle1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:clickable="false"
+                            android:focusable="false" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Style 1: Modern Dual Box"
+                                android:textColor="@color/text_bright"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Separate rounded map card + floating location card with attached badge"
+                                android:textColor="@color/text_muted"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Mini visual preview representing Style 1 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="10dp"
+                        android:background="#0B0D12"
+                        android:gravity="bottom"
+                        android:padding="6dp"
+                        android:orientation="horizontal">
+
+                        <!-- Mini map box -->
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_logo_ring">
+                            <ImageView
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="Mini Pin"
+                                android:src="@drawable/ic_red_pin" />
+                        </FrameLayout>
+
+                        <!-- Mini info box with top badge -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="end"
+                                android:background="@drawable/bg_stamp_badge"
+                                android:paddingStart="4dp"
+                                android:paddingEnd="4dp"
+                                android:text="GPS Map Camera"
+                                android:textColor="#FFFFFF"
+                                android:textSize="7sp" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="26dp"
+                                android:background="@drawable/bg_stamp_box"
+                                android:orientation="vertical"
+                                android:padding="3dp">
+                                <View
+                                    android:layout_width="65dp"
+                                    android:layout_height="3dp"
+                                    android:background="#FFFFFF" />
+                                <View
+                                    android:layout_width="95dp"
+                                    android:layout_height="2dp"
+                                    android:layout_marginTop="3dp"
+                                    android:background="#80FFFFFF" />
+                                <View
+                                    android:layout_width="55dp"
+                                    android:layout_height="2dp"
+                                    android:layout_marginTop="2dp"
+                                    android:background="#80FFFFFF" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
             </FrameLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Tap the map to drop a pin, or use the blue button for your GPS"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+            <!-- Option 2: Style 2 - Bottom Band (from gps_stamp_style.md) -->
+            <FrameLayout
+                android:id="@+id/cardStyle2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/bg_card_style_unselected"
+                android:padding="14dp">
 
-        <!-- Google Maps: search there, Share back to this app -->
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/openGoogleMapsButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_button_primary"
-            android:drawableStart="@drawable/ic_action_maps"
-            android:drawablePadding="10dp"
-            android:gravity="center"
-            android:paddingStart="24dp"
-            android:paddingEnd="40dp"
-            android:text="Search in Google Maps"
-            android:textColor="@color/btn_text_light"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textAllCaps="false"
-            android:stateListAnimator="@null" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/pasteLinkButton"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_chip_button"
-            android:drawableStart="@drawable/ic_action_paste"
-            android:drawablePadding="10dp"
-            android:gravity="center"
-            android:paddingStart="24dp"
-            android:paddingEnd="40dp"
-            android:text="Paste copied Google Maps link"
-            android:textColor="@color/btn_text_light"
-            android:textSize="13sp"
-            android:textAllCaps="false"
-            android:stateListAnimator="@null" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:lineSpacingExtra="2dp"
-            android:text="How: open Google Maps, search a place, tap Share, then choose GPS Map Camera. The location is picked automatically."
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+                        <RadioButton
+                            android:id="@+id/radioStyle2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:clickable="false"
+                            android:focusable="false" />
 
-        <TextView
-            android:id="@+id/locationSummary"
-            style="@style/InfoBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Choose a location" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
 
-        <!-- ============ Date & time ============ -->
-        <TextView style="@style/SectionLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="DATE &amp; TIME" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Style 2: Classic Bottom Band"
+                                android:textColor="@color/text_bright"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-        <CheckBox
-            android:id="@+id/useCurrentTime"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:minHeight="44dp"
-            android:text="Use current date and time"
-            android:textColor="@color/text_bright"
-            android:textSize="14sp"
-            android:checked="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Full-width bottom band (345 px) with flush satellite map &amp; top-right badge (gps_stamp_style.md)"
+                                android:textColor="@color/text_muted"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+                    <!-- Mini visual preview representing Style 2 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="10dp"
+                        android:background="#0B0D12"
+                        android:gravity="bottom"
+                        android:orientation="vertical">
 
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/pickDateButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="46dp"
-                android:background="@drawable/bg_chip_button"
-                android:drawableStart="@drawable/ic_action_calendar"
-                android:drawablePadding="8dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="Choose date"
-                android:textColor="@color/btn_text_light"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:stateListAnimator="@null" />
+                        <!-- Badge -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:background="@drawable/bg_stamp_badge_style2"
+                            android:paddingStart="5dp"
+                            android:paddingEnd="5dp"
+                            android:text="GPS Map Camera"
+                            android:textColor="#FFFFFF"
+                            android:textSize="7sp" />
 
-            <Space
-                android:layout_width="10dp"
-                android:layout_height="1dp" />
+                        <!-- Full width bottom band -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="34dp"
+                            android:background="#80000000"
+                            android:orientation="horizontal">
 
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/pickTimeButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="46dp"
-                android:background="@drawable/bg_chip_button"
-                android:drawableStart="@drawable/ic_action_clock"
-                android:drawablePadding="8dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="Choose time"
-                android:textColor="@color/btn_text_light"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:stateListAnimator="@null" />
+                            <!-- Flush map -->
+                            <FrameLayout
+                                android:layout_width="34dp"
+                                android:layout_height="34dp"
+                                android:background="#203040">
+                                <ImageView
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Mini Pin"
+                                    android:src="@drawable/ic_red_pin" />
+                            </FrameLayout>
+
+                            <!-- Flush text -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:paddingStart="6dp"
+                                android:paddingTop="3dp">
+                                <View
+                                    android:layout_width="75dp"
+                                    android:layout_height="3dp"
+                                    android:background="#FFFFFF" />
+                                <View
+                                    android:layout_width="110dp"
+                                    android:layout_height="2dp"
+                                    android:layout_marginTop="3dp"
+                                    android:background="#80FFFFFF" />
+                                <View
+                                    android:layout_width="85dp"
+                                    android:layout_height="2dp"
+                                    android:layout_marginTop="2dp"
+                                    android:background="#80FFFFFF" />
+                                <View
+                                    android:layout_width="100dp"
+                                    android:layout_height="2dp"
+                                    android:layout_marginTop="2dp"
+                                    android:background="#80FFFFFF" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/styleDescriptionSummary"
+                style="@style/InfoBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Active: Style 1 (Modern Dual Box)" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/dateTimeSummary"
-            style="@style/InfoBox"
+        <!-- ==================== TAB 2: LOCATION ==================== -->
+        <LinearLayout
+            android:id="@+id/tabContentLocation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp" />
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <!-- ============ Stamp appearance ============ -->
-        <TextView style="@style/SectionLabel"
+            <TextView style="@style/SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="LOCATION" />
+
+            <!-- Map with floating controls: search on top, GPS / zoom / layer on the right -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="#10141D"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_stroke_soft">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp">
+
+                    <org.osmdroid.views.MapView
+                        android:id="@+id/locationMap"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <!-- Search pill (top) -->
+                    <LinearLayout
+                        android:id="@+id/searchPlaceButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_gravity="top"
+                        android:layout_margin="12dp"
+                        android:background="@drawable/bg_map_pill"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/ic_action_search"
+                            android:tint="@color/accent_blue_bright" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:text="Search a place or address"
+                            android:textColor="@color/text_muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- Right-side control stack (thumb friendly) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="12dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical">
+
+                        <ImageButton
+                            android:id="@+id/mapZoomIn"
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:background="@drawable/bg_map_fab"
+                            android:contentDescription="Zoom in"
+                            android:padding="11dp"
+                            android:src="@drawable/ic_action_add"
+                            android:tint="#FFFFFF" />
+
+                        <ImageButton
+                            android:id="@+id/mapZoomOut"
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_map_fab"
+                            android:contentDescription="Zoom out"
+                            android:padding="11dp"
+                            android:src="@drawable/ic_action_remove"
+                            android:tint="#FFFFFF" />
+
+                        <ImageButton
+                            android:id="@+id/useGpsButton"
+                            android:layout_width="54dp"
+                            android:layout_height="54dp"
+                            android:layout_marginTop="14dp"
+                            android:background="@drawable/bg_map_fab_primary"
+                            android:contentDescription="Use my current GPS location"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_action_gps"
+                            android:tint="#FFFFFF" />
+                    </LinearLayout>
+
+                    <!-- Street / Satellite switch (bottom-left) -->
+                    <LinearLayout
+                        android:id="@+id/mapLayerButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:layout_gravity="bottom|start"
+                        android:layout_margin="12dp"
+                        android:background="@drawable/bg_map_pill"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="16dp">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:importantForAccessibility="no"
+                            android:src="@drawable/ic_action_layers"
+                            android:tint="#FFFFFF" />
+
+                        <TextView
+                            android:id="@+id/mapLayerLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Satellite"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Tap the map to drop a pin, or use the blue button for your GPS"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+            <!-- Google Maps: search there, Share back to this app -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/openGoogleMapsButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_button_primary"
+                android:drawableStart="@drawable/ic_action_maps"
+                android:drawablePadding="10dp"
+                android:gravity="center"
+                android:paddingStart="24dp"
+                android:paddingEnd="40dp"
+                android:text="Search in Google Maps"
+                android:textColor="@color/btn_text_light"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:stateListAnimator="@null" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/pasteLinkButton"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_chip_button"
+                android:drawableStart="@drawable/ic_action_paste"
+                android:drawablePadding="10dp"
+                android:gravity="center"
+                android:paddingStart="24dp"
+                android:paddingEnd="40dp"
+                android:text="Paste copied Google Maps link"
+                android:textColor="@color/btn_text_light"
+                android:textSize="13sp"
+                android:textAllCaps="false"
+                android:stateListAnimator="@null" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="2dp"
+                android:text="How: open Google Maps, search a place, tap Share, then choose GPS Map Camera. The location is picked automatically."
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/locationSummary"
+                style="@style/InfoBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Choose a location" />
+        </LinearLayout>
+
+        <!-- ==================== TAB 3: DATE & DETAILS ==================== -->
+        <LinearLayout
+            android:id="@+id/tabContentDetails"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="STAMP APPEARANCE" />
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <TextView style="@style/FieldLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Font size" />
+            <!-- ============ Date & time ============ -->
+            <TextView style="@style/SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DATE &amp; TIME" />
 
-        <SeekBar
-            android:id="@+id/stampFontSize"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:max="22"
-            android:progress="0" />
+            <CheckBox
+                android:id="@+id/useCurrentTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="44dp"
+                android:text="Use current date and time"
+                android:textColor="@color/text_bright"
+                android:textSize="14sp"
+                android:checked="true" />
 
-        <TextView
-            android:id="@+id/fontSizeValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="14 sp"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-        <TextView style="@style/FieldLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Map box size" />
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/pickDateButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_chip_button"
+                    android:drawableStart="@drawable/ic_action_calendar"
+                    android:drawablePadding="8dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Choose date"
+                    android:textColor="@color/btn_text_light"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    android:stateListAnimator="@null" />
 
-        <SeekBar
-            android:id="@+id/stampMapSize"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:max="110"
-            android:progress="4" />
+                <Space
+                    android:layout_width="10dp"
+                    android:layout_height="1dp" />
 
-        <TextView
-            android:id="@+id/mapSizeValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="94 dp"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/pickTimeButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_chip_button"
+                    android:drawableStart="@drawable/ic_action_clock"
+                    android:drawablePadding="8dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Choose time"
+                    android:textColor="@color/btn_text_light"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
 
-        <TextView style="@style/FieldLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Font color" />
+            <TextView
+                android:id="@+id/dateTimeSummary"
+                style="@style/InfoBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp" />
 
-        <Spinner
-            android:id="@+id/stampFontColor"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="4dp" />
+            <!-- ============ Stamp appearance ============ -->
+            <TextView style="@style/SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="STAMP APPEARANCE" />
 
-        <!-- ============ Show on stamp ============ -->
-        <TextView style="@style/SectionLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="SHOW ON STAMP" />
+            <TextView style="@style/FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Font size" />
 
-        <CheckBox
-            android:id="@+id/showAddressLine"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:minHeight="44dp"
-            android:text="Show address / area"
-            android:textColor="@color/text_bright"
-            android:textSize="14sp"
-            android:checked="true" />
+            <SeekBar
+                android:id="@+id/stampFontSize"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:max="22"
+                android:progress="0" />
 
-        <CheckBox
-            android:id="@+id/showCoordinates"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="44dp"
-            android:text="Show latitude and longitude"
-            android:textColor="@color/text_bright"
-            android:textSize="14sp"
-            android:checked="true" />
+            <TextView
+                android:id="@+id/fontSizeValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="14 sp"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
 
-        <CheckBox
-            android:id="@+id/showDateTime"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="44dp"
-            android:text="Show date and time"
-            android:textColor="@color/text_bright"
-            android:textSize="14sp"
-            android:checked="true" />
+            <TextView style="@style/FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Map box size" />
+
+            <SeekBar
+                android:id="@+id/stampMapSize"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:max="110"
+                android:progress="4" />
+
+            <TextView
+                android:id="@+id/mapSizeValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="94 dp"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+            <TextView style="@style/FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Font color" />
+
+            <Spinner
+                android:id="@+id/stampFontColor"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp" />
+
+            <!-- ============ Show on stamp ============ -->
+            <TextView style="@style/SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="SHOW ON STAMP" />
+
+            <CheckBox
+                android:id="@+id/showAddressLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="44dp"
+                android:text="Show address / area"
+                android:textColor="@color/text_bright"
+                android:textSize="14sp"
+                android:checked="true" />
+
+            <CheckBox
+                android:id="@+id/showCoordinates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="Show latitude and longitude"
+                android:textColor="@color/text_bright"
+                android:textSize="14sp"
+                android:checked="true" />
+
+            <CheckBox
+                android:id="@+id/showDateTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="Show date and time"
+                android:textColor="@color/text_bright"
+                android:textSize="14sp"
+                android:checked="true" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
@@ -398,7 +720,7 @@
             android:id="@+id/applyOptionsButton"
             android:layout_width="match_parent"
             android:layout_height="54dp"
-                        android:background="@drawable/bg_button_primary"
+            android:background="@drawable/bg_button_primary"
             android:drawableStart="@drawable/ic_action_tune"
             android:drawablePadding="10dp"
             android:gravity="center"

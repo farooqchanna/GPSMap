@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/stampRootStyle2"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- D) Top-right badge "GPS Map Camera" touching top of band and right edge -->
+        <LinearLayout
+            android:id="@+id/stampBadge2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:background="@drawable/bg_stamp_badge_style2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="7dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="3dp">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="GPS Map Camera Logo"
+                android:src="@drawable/ic_gps_camera_lens_logo" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:fontFamily="sans-serif"
+                android:text="GPS Map Camera"
+                android:textColor="#FFFFFF"
+                android:textSize="10.5sp" />
+        </LinearLayout>
+
+        <!-- A) Bottom info band: full width, #80000000 (50% black), square corners -->
+        <LinearLayout
+            android:id="@+id/stampBand2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#80000000"
+            android:orientation="horizontal">
+
+            <!-- B) Map thumbnail: flush left (x=0), square -->
+            <FrameLayout
+                android:id="@+id/stampMapContainer2"
+                android:layout_width="95dp"
+                android:layout_height="95dp">
+
+                <ImageView
+                    android:id="@+id/stampMap2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Satellite map snapshot" />
+
+                <!-- Centered red pin -->
+                <ImageView
+                    android:id="@+id/stampMapPin2"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_red_pin"
+                    android:contentDescription="Location Pin" />
+
+                <!-- Bottom-left attribution -->
+                <TextView
+                    android:id="@+id/stampMapCredit2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|start"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginBottom="4dp"
+                    android:fontFamily="sans-serif-bold"
+                    android:shadowColor="#B3000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="3"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <!-- C) Text block (right of map, ~7dp left padding) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="7dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="6dp">
+
+                <!-- Line 1: place title -->
+                <TextView
+                    android:id="@+id/stampTitle2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:shadowColor="#66000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <!-- Line 2-3: address (wraps, max 2 lines) -->
+                <TextView
+                    android:id="@+id/stampAddress2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:fontFamily="sans-serif"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:shadowColor="#66000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11.5sp" />
+
+                <!-- Line 4: coordinates -->
+                <TextView
+                    android:id="@+id/stampLatLng2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#66000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11.5sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <!-- Line 5: date/time -->
+                <TextView
+                    android:id="@+id/stampTime2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#66000000"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11.5sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -17,6 +17,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.text.StaticLayout
+import android.text.TextUtils
+import android.text.TextPaint
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -28,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Job
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,6 +60,9 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
 
     companion object {
+        const val STAMP_STYLE_DUAL_BOX = 0
+        const val STAMP_STYLE_BOTTOM_BAND = 1
+
         /** A real, descriptive user agent. OSM tile servers reject generic / "com.example" ones. */
         const val USER_AGENT = "GPSMapCamera/1.0 (Android app; https://github.com/gpsmapcamera/app)"
 
@@ -83,10 +90,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private data class StampData(
+        val title: String,          // "Sehwān, Sindh, Pakistan 🇵🇰"
+        val address: String,        // "Cv67+jgc, Hyderabad Rd, Sehwān, Sindh , Pakistan"
+        val lat: Double,
+        val lng: Double,
+        val time: Date = Date(),
+        val mapBitmap: Bitmap?,     // satellite snapshot with pin
+        val badgeIcon: Bitmap?      // small app icon (optional)
+    )
+
+    private var selectedStampStyle = STAMP_STYLE_DUAL_BOX
     private var satelliteMap = true
     private lateinit var photoPreview: ImageView
     private lateinit var emptyHint: TextView
-    private lateinit var stampPreview: View
+    private lateinit var stampPreview1: View
+    private lateinit var stampPreview2: View
+    private lateinit var stampStyleTabLayout: TabLayout
     private var photoUri: Uri? = null
     private var photoBitmap: Bitmap? = null
     private var mapSnapshot: Bitmap? = null
@@ -130,7 +150,20 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         photoPreview = findViewById(R.id.photoPreview)
         emptyHint = findViewById(R.id.emptyHint)
-        stampPreview = findViewById(R.id.stampPreview)
+        stampPreview1 = findViewById(R.id.stampPreview1)
+        stampPreview2 = findViewById(R.id.stampPreview2)
+        stampStyleTabLayout = findViewById(R.id.stampStyleTabLayout)
+        stampStyleTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                val newStyle = tab?.position ?: 0
+                if (selectedStampStyle != newStyle) {
+                    selectedStampStyle = newStyle
+                    updateStampViews()
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
         findViewById<View>(R.id.captureButton).setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
             else cameraPermission.launch(Manifest.permission.CAMERA)
@@ -181,7 +214,6 @@ class MainActivity : AppCompatActivity() {
             }
             photoPreview.setImageBitmap(photoBitmap)
             emptyHint.visibility = View.GONE
-            stampPreview.visibility = View.VISIBLE
             setConfigureEnabled(true)
             findViewById<Button>(R.id.saveButton).isEnabled = true
             updateStampViews()
@@ -193,6 +225,66 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOptions() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_stamp_options, null)
+
+        // Setup dialog tabs: Stamp Style | Location | Date & Details
+        val dialogTabLayout = dialogView.findViewById<TabLayout>(R.id.dialogTabLayout)
+        val tabContentStyle = dialogView.findViewById<View>(R.id.tabContentStyle)
+        val tabContentLocation = dialogView.findViewById<View>(R.id.tabContentLocation)
+        val tabContentDetails = dialogView.findViewById<View>(R.id.tabContentDetails)
+
+        dialogTabLayout?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> {
+                        tabContentStyle?.visibility = View.VISIBLE
+                        tabContentLocation?.visibility = View.GONE
+                        tabContentDetails?.visibility = View.GONE
+                    }
+                    1 -> {
+                        tabContentStyle?.visibility = View.GONE
+                        tabContentLocation?.visibility = View.VISIBLE
+                        tabContentDetails?.visibility = View.GONE
+                    }
+                    2 -> {
+                        tabContentStyle?.visibility = View.GONE
+                        tabContentLocation?.visibility = View.GONE
+                        tabContentDetails?.visibility = View.VISIBLE
+                    }
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+
+        // Setup style selection cards inside dialog
+        val cardStyle1 = dialogView.findViewById<View>(R.id.cardStyle1)
+        val cardStyle2 = dialogView.findViewById<View>(R.id.cardStyle2)
+        val radioStyle1 = dialogView.findViewById<RadioButton>(R.id.radioStyle1)
+        val radioStyle2 = dialogView.findViewById<RadioButton>(R.id.radioStyle2)
+        val summaryView = dialogView.findViewById<TextView>(R.id.styleDescriptionSummary)
+
+        fun refreshStyleUi() {
+            val isStyle1 = selectedStampStyle == STAMP_STYLE_DUAL_BOX
+            radioStyle1?.isChecked = isStyle1
+            radioStyle2?.isChecked = !isStyle1
+            cardStyle1?.setBackgroundResource(if (isStyle1) R.drawable.bg_card_style_selected else R.drawable.bg_card_style_unselected)
+            cardStyle2?.setBackgroundResource(if (!isStyle1) R.drawable.bg_card_style_selected else R.drawable.bg_card_style_unselected)
+            summaryView?.text = if (isStyle1) "Active: Style 1 (Modern Dual Box)" else "Active: Style 2 (Classic Bottom Band from gps_stamp_style.md)"
+            if (stampStyleTabLayout.selectedTabPosition != selectedStampStyle) {
+                stampStyleTabLayout.getTabAt(selectedStampStyle)?.select()
+            }
+            updateStampViews()
+        }
+        refreshStyleUi()
+
+        cardStyle1?.setOnClickListener {
+            selectedStampStyle = STAMP_STYLE_DUAL_BOX
+            refreshStyleUi()
+        }
+        cardStyle2?.setOnClickListener {
+            selectedStampStyle = STAMP_STYLE_BOTTOM_BAND
+            refreshStyleUi()
+        }
         val mapWidget = dialogView.findViewById<MapView>(R.id.locationMap)
         mapView = mapWidget
         mapWidget.setTileSource(if (satelliteMap) SATELLITE_TILES else STREET_TILES)
@@ -653,53 +745,206 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStampViews() {
-        val root = stampPreview
-        root.findViewById<TextView>(R.id.stampTitle)?.apply {
+        val isLoaded = photoBitmap != null
+        stampPreview1.visibility = if (isLoaded && selectedStampStyle == STAMP_STYLE_DUAL_BOX) View.VISIBLE else View.GONE
+        stampPreview2.visibility = if (isLoaded && selectedStampStyle == STAMP_STYLE_BOTTOM_BAND) View.VISIBLE else View.GONE
+
+        // Update Style 1 views
+        stampPreview1.findViewById<TextView>(R.id.stampTitle)?.apply {
             text = stampTitle
             setTextColor(stampFontColor)
             textSize = stampFontSize
         }
         val bodySize = stampFontSize * 0.64f
-        root.findViewById<TextView>(R.id.stampAddress)?.apply {
+        stampPreview1.findViewById<TextView>(R.id.stampAddress)?.apply {
             text = stampAddress
             setTextColor(stampFontColor)
             textSize = bodySize
             visibility = if (showAddressLine && stampAddress.isNotBlank()) View.VISIBLE else View.GONE
         }
-        root.findViewById<TextView>(R.id.stampCoordinates)?.apply {
+        stampPreview1.findViewById<TextView>(R.id.stampCoordinates)?.apply {
             text = stampCoords
             setTextColor(stampFontColor)
             textSize = bodySize
             visibility = if (showCoordinates && stampCoords.isNotBlank()) View.VISIBLE else View.GONE
         }
-        root.findViewById<TextView>(R.id.stampDateTime)?.apply {
+        stampPreview1.findViewById<TextView>(R.id.stampDateTime)?.apply {
             text = stampDate
             setTextColor(stampFontColor)
             textSize = bodySize
             visibility = if (showDateTime && stampDate.isNotBlank()) View.VISIBLE else View.GONE
         }
-        root.findViewById<TextView>(R.id.stampNote)?.apply {
+        stampPreview1.findViewById<TextView>(R.id.stampNote)?.apply {
             text = "Note : Captured by GPS Map Camera"
             setTextColor(stampFontColor)
             textSize = bodySize
         }
-        root.findViewById<ImageView>(R.id.stampMapImage)?.setImageBitmap(mapSnapshot)
-        root.findViewById<TextView>(R.id.stampMapCredit)?.text = mapAttribution
-        val mapCard = root.findViewById<View>(R.id.stampMapCard)
+        stampPreview1.findViewById<ImageView>(R.id.stampMapImage)?.setImageBitmap(mapSnapshot)
+        stampPreview1.findViewById<TextView>(R.id.stampMapCredit)?.text = mapAttribution
+        val mapCard = stampPreview1.findViewById<View>(R.id.stampMapCard)
         mapCard?.layoutParams?.let {
             val sizePx = (stampMapSizeDp * resources.displayMetrics.density).toInt()
             it.width = sizePx
             it.height = sizePx
             mapCard.layoutParams = it
         }
+
+        // Update Style 2 views (Style spec from gps_stamp_style.md)
+        stampPreview2.findViewById<TextView>(R.id.stampTitle2)?.text = stampTitle
+        stampPreview2.findViewById<TextView>(R.id.stampAddress2)?.apply {
+            text = stampAddress
+            visibility = if (showAddressLine && stampAddress.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        stampPreview2.findViewById<TextView>(R.id.stampLatLng2)?.apply {
+            text = stampCoords
+            visibility = if (showCoordinates && stampCoords.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        stampPreview2.findViewById<TextView>(R.id.stampTime2)?.apply {
+            text = stampDate
+            visibility = if (showDateTime && stampDate.isNotBlank()) View.VISIBLE else View.GONE
+        }
+        stampPreview2.findViewById<ImageView>(R.id.stampMap2)?.setImageBitmap(mapSnapshot)
+        stampPreview2.findViewById<TextView>(R.id.stampMapCredit2)?.text = mapAttribution
     }
 
-    private fun saveStampedPhoto() {
-        val source = photoBitmap ?: return toast("Choose a photo first.")
-        if (Build.VERSION.SDK_INT < 29 && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE); return
+    private fun getBadgeIconBitmap(sizePx: Int): Bitmap {
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val d = ContextCompat.getDrawable(this, R.drawable.ic_gps_camera_lens_logo)
+            ?: ContextCompat.getDrawable(this, R.drawable.ic_gps_badge_logo)
+        d?.setBounds(0, 0, sizePx, sizePx)
+        d?.draw(c)
+        return bmp
+    }
+
+    /** Style 2: Exact implementation from gps_stamp_style.md */
+    private fun drawGpsStampStyle2(src: Bitmap, d: StampData): Bitmap {
+        val out = src.copy(Bitmap.Config.ARGB_8888, true)
+        val c = Canvas(out)
+        val s = out.width / 1200f
+        val H = out.height.toFloat()
+        val W = out.width.toFloat()
+
+        // A) bottom band (345 px tall, anchored to the bottom)
+        val bandH = 345f * s
+        val bandTop = H - bandH
+        c.drawRect(0f, bandTop, W, H, Paint().apply { color = 0x80000000.toInt() })
+
+        // B) map thumbnail 285x285, flush left, top of band
+        val mapSize = 285f * s
+        val mapRect = RectF(0f, bandTop, mapSize, bandTop + mapSize)
+        val currentSnapshot = d.mapBitmap ?: generateFallbackMapBitmap(d.lat, d.lng)
+        c.drawBitmap(currentSnapshot, null, mapRect, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+
+        // Center red pin on map (about 40 px tall, color #E53935)
+        val pinCenterX = mapSize / 2f
+        val pinCenterY = bandTop + mapSize / 2f
+        val pinHeight = 40f * s
+        val pinWidth = pinHeight * 0.75f
+        val pinRadius = pinWidth / 2f
+        val pinTipY = pinCenterY + pinHeight * 0.40f
+        val headCenterY = pinTipY - pinHeight + pinRadius
+
+        val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#E53935")
+            style = Paint.Style.FILL
         }
-        buildStampText()
+        val pinShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(90, 0, 0, 0)
+        }
+        c.drawOval(
+            RectF(pinCenterX - pinRadius * 0.7f, pinTipY - pinRadius * 0.15f, pinCenterX + pinRadius * 0.7f, pinTipY + pinRadius * 0.35f),
+            pinShadowPaint
+        )
+        val pinPath = Path().apply {
+            moveTo(pinCenterX, pinTipY)
+            cubicTo(
+                pinCenterX + pinRadius * 0.9f, pinTipY - pinHeight * 0.35f,
+                pinCenterX + pinRadius, headCenterY + pinRadius * 0.5f,
+                pinCenterX + pinRadius, headCenterY
+            )
+            arcTo(
+                RectF(pinCenterX - pinRadius, headCenterY - pinRadius, pinCenterX + pinRadius, headCenterY + pinRadius),
+                0f, -180f, false
+            )
+            cubicTo(
+                pinCenterX - pinRadius, headCenterY + pinRadius * 0.5f,
+                pinCenterX - pinRadius * 0.9f, pinTipY - pinHeight * 0.35f,
+                pinCenterX, pinTipY
+            )
+            close()
+        }
+        c.drawPath(pinPath, pinPaint)
+        c.drawCircle(pinCenterX, headCenterY, pinRadius * 0.42f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
+
+        // Map attribution / logo: bottom-left with 12 px margin
+        if (mapAttribution.isNotBlank()) {
+            val attrPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = 22f * s
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                setShadowLayer(3f * s, 1f * s, 1f * s, Color.argb(180, 0, 0, 0))
+            }
+            c.drawText(mapAttribution, 12f * s, bandTop + mapSize - 12f * s, attrPaint)
+        }
+
+        // C) text block
+        val shadow = { p: TextPaint -> p.setShadowLayer(2f * s, 1f * s, 1f * s, 0x66000000) }
+        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 54f * s
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); shadow(this)
+        }
+        val bodyPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 36f * s
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL); shadow(this)
+        }
+        val x = 307f * s
+        val textW = (W - x - 20f * s).toInt().coerceAtLeast(10)
+        val y = bandTop + 75f * s                      // title baseline (1330 - 1255)
+        c.drawText(d.title, x, y, titlePaint)
+
+        // address (wraps, max 2 lines)
+        if (d.address.isNotBlank()) {
+            val layout = StaticLayout.Builder
+                .obtain(d.address, 0, d.address.length, bodyPaint, textW)
+                .setLineSpacing(0f, 1.1f).setMaxLines(2)
+                .setEllipsize(TextUtils.TruncateAt.END).build()
+            c.save()
+            c.translate(x, bandTop + 75f * s + 12f * s)    // top of address block
+            layout.draw(c)
+            c.restore()
+        }
+
+        val dateFmt = SimpleDateFormat("EEEE, dd/MM/yyyy hh:mm a 'GMT' xxx", Locale.ENGLISH)
+        dateFmt.timeZone = TimeZone.getDefault()
+        val gmt = dateFmt.format(d.time)
+        c.drawText("Lat ${"%.6f".format(Locale.US, d.lat)}° Long ${"%.5f".format(Locale.US, d.lng)}°",
+            x, bandTop + 217f * s, bodyPaint)
+        c.drawText(gmt, x, bandTop + 262f * s, bodyPaint)
+
+        // D) top-right badge "GPS Map Camera"
+        val bx1 = W; val bx0 = W - 232f * s
+        val by1 = bandTop; val by0 = bandTop - 55f * s
+        val path = Path().apply {
+            addRoundRect(RectF(bx0, by0, bx1, by1),
+                floatArrayOf(14f * s, 14f * s, 0f, 0f, 0f, 0f, 0f, 0f), Path.Direction.CW)
+        }
+        c.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x8C000000.toInt() })
+        d.badgeIcon?.let {
+            c.drawBitmap(it, null, RectF(bx0 + 12f * s, by0 + 10f * s,
+                bx0 + 46f * s, by0 + 44f * s), Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+        }
+        val badgeText = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 22f * s
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+        c.drawText("GPS Map Camera", bx0 + 54f * s, by0 + 36f * s, badgeText)
+
+        return out
+    }
+
+    /** Style 1: Preserved original floating dual box stamp */
+    private fun drawGpsStampStyle1(source: Bitmap): Bitmap {
         val output = source.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
 
@@ -917,6 +1162,33 @@ class MainActivity : AppCompatActivity() {
                 val nextSize = linesToDraw[i + 1].second.textSize
                 currentY += nextSize + lineSpacing
             }
+        }
+
+        return output
+    }
+
+    private fun saveStampedPhoto() {
+        val source = photoBitmap ?: return toast("Choose a photo first.")
+        if (Build.VERSION.SDK_INT < 29 && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE); return
+        }
+        buildStampText()
+
+        val output: Bitmap = if (selectedStampStyle == STAMP_STYLE_BOTTOM_BAND) {
+            val scale = source.width / 1200f
+            val badgeBmp = getBadgeIconBitmap((68 * scale).toInt().coerceAtLeast(34))
+            val stampData = StampData(
+                title = stampTitle,
+                address = if (showAddressLine) stampAddress else "",
+                lat = chosenLat,
+                lng = chosenLon,
+                time = chosenDate.time,
+                mapBitmap = mapSnapshot ?: generateFallbackMapBitmap(chosenLat, chosenLon),
+                badgeIcon = badgeBmp
+            )
+            drawGpsStampStyle2(source, stampData)
+        } else {
+            drawGpsStampStyle1(source)
         }
 
         val values = ContentValues().apply {

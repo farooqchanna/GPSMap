@@ -90,8 +90,16 @@
             android:contentDescription="Selected photo preview" />
 
         <include
-            android:id="@+id/stampPreview"
+            android:id="@+id/stampPreview1"
             layout="@layout/stamp_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/stampPreview2"
+            layout="@layout/stamp_overlay_style2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
@@ -111,6 +119,38 @@
             android:textColor="@color/text_faint"
             android:textSize="15sp" />
     </FrameLayout>
+
+    <!-- ===================== Stamp Style Selector Tab ===================== -->
+    <LinearLayout
+        android:id="@+id/stampStyleTabContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="10dp">
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/stampStyleTabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:padding="3dp"
+            android:background="@drawable/bg_tab_pill_container"
+            app:tabBackground="@drawable/bg_tab_pill_selector"
+            app:tabIndicatorHeight="0dp"
+            app:tabMode="fixed"
+            app:tabGravity="fill"
+            app:tabRippleColor="@null"
+            app:tabTextColor="@color/text_muted"
+            app:tabSelectedTextColor="#FFFFFF">
+
+            <com.google.android.material.tabs.TabItem
+                android:text="Style 1: Dual Box" />
+
+            <com.google.android.material.tabs.TabItem
+                android:text="Style 2: Bottom Band" />
+        </com.google.android.material.tabs.TabLayout>
+    </LinearLayout>
 
     <!-- ===================== Bottom action bar ===================== -->
     <LinearLayout
